@@ -17,8 +17,6 @@ Abecedary.prototype.run = function(code, tests) {
     _this.context = context;
 
     var runner = [
-      'savedEval = eval',
-      'eval = function() { throw "eval() is disabled"; };',
       'window.code = unescape("' + escape(code) + '");',
       'mocha.suite.suites.shift()',
       tests || _this.tests,
