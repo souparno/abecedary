@@ -1,0 +1,21 @@
+{
+  "name": "abecedary",
+  "version": "0.0.1",
+  "description": "Crossdomain JavaScript test runner for Mocha.",
+  "author": "Adam Fortuna",
+  "repository": {
+    "type": "git", 
+    "url": "https://github.com/codeschool/abecedary.git"
+  },
+  "main": "index.js",
+  "license": "AAL",
+  "bin" : { 
+    "abecedary" : "./bin/abecedary.js"
+  },
+  "dependencies": {
+    "stuff.js": "https://github.com/adamfortuna/stuff.js/tarball/master"
+  },
+  "devDependencies": {
+    "mocha": "~1.17.0"
+  }
+}
