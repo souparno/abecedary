@@ -9,9 +9,6 @@
   },
   "main": "index.js",
   "license": "AAL",
-  "bin" : { 
-    "abecedary" : "./bin/abecedary.js"
-  },
   "dependencies": {
     "stuff.js": "https://github.com/adamfortuna/stuff.js/tarball/master"
   },
