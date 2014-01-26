@@ -17,7 +17,7 @@ Abecedary.prototype.run = function(code, tests) {
     _this.context = context;
 
     var runner = [
-      'window.code = unescape("' + escape(code) + '");',
+      'window.code = JSON.parse("' + JSON.stringify(code) + '");',
       'mocha.suite.suites.shift()',
       tests || _this.tests,
       'window.mocha.run();',
