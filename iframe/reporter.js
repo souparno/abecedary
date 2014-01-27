@@ -43,8 +43,7 @@ AbecedaryReporter.prototype = new F;
 AbecedaryReporter.prototype.constructor = AbecedaryReporter
 
 mocha.globals(['code']);
-mocha.setup({ ui: 'bdd',
-              bail: true, 
-              reporter: AbecedaryReporter, 
-              ignoreLeaks: false
-            });
+
+window.parent.stuffEmit('loaded');
+
+this.mocha.setup({ reporter: AbecedaryReporter });
