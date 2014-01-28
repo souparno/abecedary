@@ -7,7 +7,7 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: false }, this.options);
+  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
   this.createSandbox();
 }
 emitter(Abecedary.prototype);
