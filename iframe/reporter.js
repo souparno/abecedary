@@ -4,9 +4,19 @@ if(!eval && execScript) {
 
 function clean(test) {
   return {
-      title: test.title
-    , fullTitle: test.fullTitle()
-    , duration: test.duration
+    title: test.title,
+    fullTitle: test.fullTitle(),
+    duration: test.duration,
+    error: cleanErr(test.err)
+  }
+}
+
+function cleanErr(error) {
+  if(!error) { return null; }
+  return {
+    actual: error.actual,
+    expected: error.expected,
+    message: error.message
   }
 }
 
