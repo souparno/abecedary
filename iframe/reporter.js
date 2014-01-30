@@ -2,22 +2,28 @@ if(!eval && execScript) {
   execScript("null");
 }
 
-function clean(test) {
-  return {
-    title: test.title,
-    fullTitle: test.fullTitle(),
-    duration: test.duration,
-    error: cleanErr(test.err)
-  }
-}
+// Deep clone that only grabs strings and numbers
+function cleanObject(error, depth) {
+  if(!error || depth > 5) { return null; }
 
-function cleanErr(error) {
-  if(!error) { return null; }
-  return {
-    actual: error.actual,
-    expected: error.expected,
-    message: error.message
-  }
+  depth = depth || 0;
+
+  var response = {};
+  for(var key in error) {
+    try {
+      if(key[0] == "_" || key[0] == "$" || key == 'ctx' || key == 'parent') {
+        // Skip underscored variables
+      } else if(typeof(error[key]) == 'string' || typeof(error[key]) == 'number') {
+        response[key] = error[key];
+      } else if(typeof(error[key]) == 'object') {
+        response[key] = cleanObject(error[key], depth + 1)
+      }
+    } catch(e) {
+      response[key] = 'Unable to process this result.'
+    }
+  };
+
+  return response;
 }
 
 function AbecedaryReporter(runner) {
@@ -40,9 +46,9 @@ function AbecedaryReporter(runner) {
   runner.on('end', function(){
     var data = {
         stats: self.stats, 
-        tests: tests.map(clean),
-        failures: failures.map(clean),
-        passes: passes.map(clean)
+        tests: tests.map(cleanObject),
+        failures: failures.map(cleanObject),
+        passes: passes.map(cleanObject)
     };
     window.parent.stuffEmit('finished', data);
   });
