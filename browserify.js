@@ -1,7 +1,8 @@
-var stuff = require('stuff.js'),
-    emitter = require('emitter'),
-    Promise = require('promise'),
-    extend = require('extend');
+var component = require('./public/component')
+    stuff = component('adamfortuna-stuff.js'),
+    emitter = component('component-emitter'),
+    Promise = component('then-promise'),
+    extend = component('segmentio-extend');
 
 function Abecedary(iframeUrl, template, options) {
   this.options = options || {};

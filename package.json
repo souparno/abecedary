@@ -9,10 +9,12 @@
   },
   "main": "index.js",
   "license": "AAL",
-  "dependencies": {
-    "stuff.js": "https://github.com/adamfortuna/stuff.js/tarball/master"
-  },
+  "dependencies": { },
   "devDependencies": {
-    "mocha": "~1.17.0"
+    "browserify": "3.32.0",
+    "mocha": "~1.17.0",
+    "grunt": "~0.4.2",
+    "grunt-shell": "~0.6.4",
+    "decomponentify": "~0.0.3"
   }
 }
