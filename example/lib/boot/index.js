@@ -48,7 +48,7 @@ function setup(subexample) {
   dom('#question .instructions').text(example.question);
 
   // Ideally, this iFrame would be on a different domain.
-  sandbox = new Abcedary('http://localhost:4000/lib/abecedary/dist/iframe.html', example.iframe, example.options);
+  sandbox = new Abcedary('http://localhost:4000/dist/iframe.html', example.iframe, example.options);
 
   // Add all the needed content
   editor = new CodeMirror(dom('.editor')[0], extend({ value: example.code, syntax: example.syntax }, options));

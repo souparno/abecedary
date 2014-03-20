@@ -15,8 +15,7 @@
   "license": "AAL",
   "main": "index.js",
   "local": [
-    "javascript",
-    "abecedary"
+    "javascript"
   ],
   "scripts": [
     "index.js"
