@@ -1,0 +1,24 @@
+var assert = require('chai').assert,
+    sinon = require('sinon'),
+    sandbox = require('javascript-sandbox');
+
+describe('add', function() {
+  before(function() {
+    var sandbox = new Sandbox(code);
+  });
+  it('Be sure to define a function named `add`.', function() {
+    assert(sandbox.run(function() {
+      return typeof(add) === 'function';
+    });
+  });
+  it('Your `add` function should take in two arguments.', function() {
+    assert(sandbox.run(function() {
+      return add.length == 2;
+    });
+  });
+  it('`add` should return the result of adding the two arguments.', function() {
+    assert(sandbox.run(function() {
+      return (add(4, 8) == 12) && (add(1, 2) == 3)
+    });
+  });
+});

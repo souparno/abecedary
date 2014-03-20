@@ -4,18 +4,17 @@
   "description": "Crossdomain JavaScript test runner for Mocha.",
   "version": "0.0.1",
   "keywords": ["mocha", "stuff.js", "iframe", "test"],
-  "dependencies": {
+  "dependencies": { },
+  "development": {
+    "visionmedia/mocha": "*",
     "component/emitter": "*",
     "then/promise": "*",
     "segmentio/extend": "*",
     "adamfortuna/stuff.js": "*"
   },
-  "development": {
-    "visionmedia/mocha": "*"
-  },
   "license": "MIT",
-  "main": "index.js",
+  "main": "dist/abecedary.js",
   "scripts": [
-    "index.js"
+    "dist/abecedary.js"
   ]
 }

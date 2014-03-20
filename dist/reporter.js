@@ -1,3 +1,6 @@
+// This file should be included in the iFrame is running your mocha tests
+// Include it after Mocha
+
 if(!eval && execScript) {
   execScript("null");
 }

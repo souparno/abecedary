@@ -1,14 +1,39 @@
-var stuff = require('stuff.js'),
-    emitter = require('emitter'),
-    Promise = require('promise'),
-    extend = require('extend');
+var component = require('./lib/component')
+    stuff = component('adamfortuna-stuff.js'),
+    emitter = component('component-emitter'),
+    Promise = component('then-promise'),
+    extend = component('segmentio-extend');
 
 function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
   this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
-  this.createSandbox();
+
+  this.sandbox = new Promise(function (resolve, reject) {
+    stuff(this.iframeUrl, function (context) {
+      // Whenever we run tests in the sandbox, call runComplete
+      context.on('finished', runComplete.bind(this));
+      context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
+
+      // Contains the initial HTML and libraries needed to run tests,
+      // as well as the tests themselves, but not the code
+      context.load(this.template);
+
+      this.context = context;
+    }.bind(this));
+  }.bind(this));
+
+  //  Publicize the run is done
+  var runComplete = function(report) {
+    this.emit('complete', report);
+  }
+
+  // Setup Mocha upon completion
+  var loaded = function(promise, report) {
+    this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
+    promise.resolve(this.context);
+  }
 }
 emitter(Abecedary.prototype);
 
@@ -40,37 +65,5 @@ Abecedary.prototype.run = function(code, tests) {
 Abecedary.prototype.close = function(data) {
   stuff.clear();
 }
-
-// Private
-//   Creates the stuff.js sandbox and returns a promise
-Abecedary.prototype.createSandbox = function() {
-  var _this = this;
-  this.sandbox = new Promise(function (resolve, reject) {
-    stuff(_this.iframeUrl, function (context) {
-      // Whenever we run tests in the sandbox, call runComplete
-      context.on('finished', runComplete.bind(_this));
-      context.on('loaded', loaded.bind(_this, { resolve: resolve, reject: reject }));
-
-      // Contains the initial HTML and libraries needed to run tests,
-      // as well as the tests themselves, but not the code
-      context.load(_this.template);
-
-      _this.context = context;
-    });
-  });
-  return this.sandbox;
-}
-
-//  Publicize the run is done
-var runComplete = function(report) {
-  this.emit('complete', report);
-}
-
-// Setup Mocha upon completion
-var loaded = function(promise, report) {
-  this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
-  promise.resolve(this.context);
-}
-
 
 module.exports = Abecedary;

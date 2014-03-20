@@ -1,5 +1,5 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Abecedary=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-var component = _dereq_('./public/component')
+var component = _dereq_('./lib/component')
     stuff = component('adamfortuna-stuff.js'),
     emitter = component('component-emitter'),
     Promise = component('then-promise'),
@@ -10,7 +10,31 @@ function Abecedary(iframeUrl, template, options) {
   this.iframeUrl = iframeUrl;
   this.template = template;
   this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
-  this.createSandbox();
+
+  this.sandbox = new Promise(function (resolve, reject) {
+    stuff(this.iframeUrl, function (context) {
+      // Whenever we run tests in the sandbox, call runComplete
+      context.on('finished', runComplete.bind(this));
+      context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
+
+      // Contains the initial HTML and libraries needed to run tests,
+      // as well as the tests themselves, but not the code
+      context.load(this.template);
+
+      this.context = context;
+    }.bind(this));
+  }.bind(this));
+
+  //  Publicize the run is done
+  var runComplete = function(report) {
+    this.emit('complete', report);
+  }
+
+  // Setup Mocha upon completion
+  var loaded = function(promise, report) {
+    this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
+    promise.resolve(this.context);
+  }
 }
 emitter(Abecedary.prototype);
 
@@ -43,40 +67,8 @@ Abecedary.prototype.close = function(data) {
   stuff.clear();
 }
 
-// Private
-//   Creates the stuff.js sandbox and returns a promise
-Abecedary.prototype.createSandbox = function() {
-  var _this = this;
-  this.sandbox = new Promise(function (resolve, reject) {
-    stuff(_this.iframeUrl, function (context) {
-      // Whenever we run tests in the sandbox, call runComplete
-      context.on('finished', runComplete.bind(_this));
-      context.on('loaded', loaded.bind(_this, { resolve: resolve, reject: reject }));
-
-      // Contains the initial HTML and libraries needed to run tests,
-      // as well as the tests themselves, but not the code
-      context.load(_this.template);
-
-      _this.context = context;
-    });
-  });
-  return this.sandbox;
-}
-
-//  Publicize the run is done
-var runComplete = function(report) {
-  this.emit('complete', report);
-}
-
-// Setup Mocha upon completion
-var loaded = function(promise, report) {
-  this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
-  promise.resolve(this.context);
-}
-
-
 module.exports = Abecedary;
-},{"./public/component":2}],2:[function(_dereq_,module,exports){
+},{"./lib/component":2}],2:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -461,9 +453,9 @@ var hasSetImmediate = typeof setImmediate === "function";
 var domain;
 
 if (typeof global != 'undefined') {
-	// Avoid shims from browserify.
-	// The existence of `global` in browsers is guaranteed by browserify.
-	var process = global.process;
+  // Avoid shims from browserify.
+  // The existence of `global` in browsers is guaranteed by browserify.
+  var process = global.process;
 }
 
 // Note that some fake-Node environments,
