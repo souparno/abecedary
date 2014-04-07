@@ -2,11 +2,11 @@ module.exports = function(grunt) {
   grunt.initConfig({
     shell: {
       browserify: {
-        command: 'browserify -r sinon -r chai -r javascript-sandbox -r jshint -o ../../build/sandbox_vendor.js'
+        command: 'browserify -r chai -r javascript-sandbox -r jshint -o ../../build/sandbox_vendor.js'
       }
     },
     concat: {
-      '../../build/demos/javascript.js': ['../../build/sandbox_vendor.js', 'node_modules/mocha/mocha.js', '../abecedary/dist/reporter.js']
+      '../../build/demos/javascript.js': ['../../build/sandbox_vendor.js', 'node_modules/mocha/mocha.js', 'node_modules/abecedary/dist/reporter.js']
     }
   });
 

@@ -22412,13 +22412,44 @@ require.register("javascript/code.js", function(exports, require, module){
 module.exports = '';
 });
 require.register("javascript/tests.js", function(exports, require, module){
-module.exports = 'var assert = require(\'chai\').assert,\n    sinon = require(\'sinon\'),\n    Sandbox = require(\'javascript-sandbox\'),\n    jshint = require(\'jshint\').JSHINT;\n\ndescribe(\'add\', function() {\n  var sandbox;\n\n  beforeEach(function() {\n    try {\n      sandbox = new Sandbox();\n      sandbox.evaluate(code);\n    } catch(e) {}\n  });\n  \n  afterEach(function() {\n    sandbox.destroy();\n  });\n\n  it("Looks like there\'s a syntax error in your code.", function() {\n    if(!jshint(code)) { throw jshint.errors[0]; }\n  });\n\n  it(\'Be sure to define a function named `add`.\', function() {\n    assert(typeof sandbox.get(\'add\') === \'function\');\n  });\n\n  it(\'Your `add` function should take in two arguments.\', function() {\n    assert(sandbox.get(\'add\').length === 2);\n  });\n  \n  it(\'`add` should return the result of adding the two arguments.\', function() {\n    var result = sandbox.exec(function() { return this.add(40,2) });\n    assert(result === 42);\n  });\n});';
+module.exports = 'var assert = require(\'chai\').assert,\n    Sandbox = require(\'javascript-sandbox\'),\n    jshint = require(\'jshint\').JSHINT;\n\ndescribe(\'add\', function() {\n  var sandbox;\n\n  beforeEach(function() {\n    try {\n      sandbox = new Sandbox();\n      sandbox.evaluate(code);\n    } catch(e) {}\n  });\n  \n  afterEach(function() {\n    sandbox.destroy();\n  });\n\n  it("Looks like there\'s a syntax error in your code.", function() {\n    if(!jshint(code)) { throw jshint.errors[0]; }\n  });\n\n  it(\'Be sure to define a function named `add`.\', function() {\n    assert(typeof sandbox.get(\'add\') === \'function\');\n  });\n\n  it(\'Your `add` function should take in two arguments.\', function() {\n    assert(sandbox.get(\'add\').length === 2);\n  });\n  \n  it(\'`add` should return the result of adding the two arguments.\', function() {\n    var result = sandbox.exec(function() { return this.add(40,2) });\n    assert(result === 42);\n  });\n});';
 });
 require.register("javascript/answer.js", function(exports, require, module){
 module.exports = 'function add(one, two) {\n  return one + two;\n}';
 });
 require.register("javascript/iframe.js", function(exports, require, module){
 module.exports = '<!DOCTYPE html>\n<html>\n  <head>\n    <title>Abecedary Tests</title>\n  </head>\n  <body>\n    <script src="../example/build/demos/javascript.js"></script>\n  </body>\n</html>';
+});
+require.register("javascript-logging/index.js", function(exports, require, module){
+var iframeTemplate = require('./iframe'); 
+var code = require('./code');
+var tests = require('./tests');
+var answer = require('./answer');
+
+module.exports = {
+  name: "Sample JavaScript Challenge With Logging",
+  iframe: iframeTemplate,
+  code: code,
+  tests: tests,
+  answer: answer,
+  syntax: 'javascript',
+  question: "Log the message `Hello, World!` to the console.",
+  options: {
+    bail: true
+  }
+}
+});
+require.register("javascript-logging/code.js", function(exports, require, module){
+module.exports = '';
+});
+require.register("javascript-logging/tests.js", function(exports, require, module){
+module.exports = 'var assert = require(\'chai\').assert,\n    sinon = require(\'sinon\'),\n    Sandbox = require(\'javascript-sandbox\'),\n    jshint = require(\'jshint\').JSHINT;\n\ndescribe(\'console.log\', function() {\n  var sandbox, consoleLogStub;\n\n  beforeEach(function() {\n    try {\n      consoleLogStub = sinon.spy();\n      sandbox = new Sandbox({\n        variables: {\n          \'console.log\': consoleLogStub\n        }\n      });\n      sandbox.evaluate(code);\n    } catch(e) {}\n  });\n  \n  afterEach(function() {\n    try {\n      sandbox.destroy();\n    } catch(e) {}\n  });\n\n  details(\'console.log\', function() {\n    return consoleLogStub.args;\n  });\n\n  it("Looks like there\'s a syntax error in your code.", function() {\n    if(!jshint(code)) { throw jshint.errors[0]; }\n  });\n\n  it("Did not call `console.log`, passing in a message.", function() {\n    assert(consoleLogStub.callCount > 0);\n  });\n\n  it("Did not pass in the message `Hello, World!` to `console.log`.", function() {\n    assert(consoleLogStub.calledWith(\'Hello, World!\'));\n  });\n});';
+});
+require.register("javascript-logging/answer.js", function(exports, require, module){
+module.exports = 'console.log("Hello, World!");';
+});
+require.register("javascript-logging/iframe.js", function(exports, require, module){
+module.exports = '<!DOCTYPE html>\n<html>\n  <head>\n    <title>Abecedary Tests</title>\n  </head>\n  <body>\n    <script src="../example/build/demos/javascript-logging.js"></script>\n  </body>\n</html>';
 });
 require.register("boot/index.js", function(exports, require, module){
 var dom = require('dom');
@@ -22461,8 +22492,18 @@ function teardown() {
   }
 }
 
-function setup(subexample) {
+function formatDetails(details) {
+  var results = details;
+  if(details instanceof Array) {
+    results = dom("<ul></ul>");
+    for(var detail in details) {
+      results.append("<li>" + details[detail] + "</li>");
+    }
+  }
+  return results;
+}
 
+function setup(subexample) {
   teardown();
   example = require(subexample);
 
@@ -22472,7 +22513,6 @@ function setup(subexample) {
 
   // Ideally, this iFrame would be on a different domain.
   var iframeUrl = window.location.toString() + "../dist/iframe.html";
-  sandbox = new Abcedary(iframeUrl, example.iframe, example.options);
 
   // Add all the needed content
   editor = new CodeMirror(dom('.editor')[0], extend({ value: example.code, syntax: example.syntax }, options));
@@ -22481,31 +22521,42 @@ function setup(subexample) {
 
   runWrapper = debounce(function () {
     console.log("Running tests for: " + example.name);
+    sandbox = new Abcedary(iframeUrl, example.iframe, example.options);
     sandbox.run(editor.getValue(), tests.getValue());
+
+    // Run whenever a test run completes
+    sandbox.on('complete', function(results) {
+      sandbox.close();
+      console.log('sandbox run complete: ');
+      console.log(results);
+
+      dom('#content .stats').text("Passing: " + results.stats.passes + " / failures: " + results.stats.failures + " / duration: " + results.stats.duration);
+
+      var list = dom('.tasks')
+      list.empty()
+
+      for(var test in results.passes) {
+        list.append("<li class='success'>"+results.passes[test].title+"</li>");
+      }
+      var message;
+      for(var test in results.failures) {
+        message = results.failures[test].err.reason ? ("<p>" + results.failures[test].err.reason + "</p>") : "";
+        list.append("<li class='failure'><p>"+results.failures[test].title+"</p>"+message+"</li>");
+      }
+
+      // Output the details if there are any:
+      var details = dom('.details ul')
+      details.empty()
+      for(var detail in results.details) {
+        li = dom("<li>" + detail + ": <div></div></li>");
+        li.find("div").append(formatDetails(results.details[detail]));
+        details.append(li);
+      }
+    });
   }, 250);
 
   editor.on('change', runWrapper);
   tests.on('change', runWrapper);
-
-  // Run whenever a test run completes
-  sandbox.on('complete', function(results) {
-    console.log('sandbox run complete: ');
-    console.log(results);
-
-    dom('#content .stats').text("Passing: " + results.stats.passes + " / failures: " + results.stats.failures + " / duration: " + results.stats.duration);
-
-    var list = dom('.tasks')
-    list.empty()
-
-    for(var test in results.passes) {
-      list.append("<li class='success'>"+results.passes[test].title+"</li>");
-    }
-    var message;
-    for(var test in results.failures) {
-      message = results.failures[test].err.reason ? ("<p>" + results.failures[test].err.reason + "</p>") : "";
-      list.append("<li class='failure'><p>"+results.failures[test].title+"</p>"+message+"</li>");
-    }
-  });
 
   // Run the tests once to start things off.
   runWrapper();
@@ -22513,10 +22564,13 @@ function setup(subexample) {
 
 setup('javascript');
 
-dom('#examples a').on('click', function() {
+dom('#examples a').on('click', function(e) {
+  e.preventDefault();
   setup(dom(this).attr('data-example'));
 });
 });
+
+
 
 
 
@@ -22676,4 +22730,11 @@ require.alias("javascript/answer.js", "boot/deps/javascript/answer.js");
 require.alias("javascript/iframe.js", "boot/deps/javascript/iframe.js");
 require.alias("javascript/index.js", "boot/deps/javascript/index.js");
 require.alias("javascript/index.js", "javascript/index.js");
+require.alias("javascript-logging/index.js", "boot/deps/javascript-logging/index.js");
+require.alias("javascript-logging/code.js", "boot/deps/javascript-logging/code.js");
+require.alias("javascript-logging/tests.js", "boot/deps/javascript-logging/tests.js");
+require.alias("javascript-logging/answer.js", "boot/deps/javascript-logging/answer.js");
+require.alias("javascript-logging/iframe.js", "boot/deps/javascript-logging/iframe.js");
+require.alias("javascript-logging/index.js", "boot/deps/javascript-logging/index.js");
+require.alias("javascript-logging/index.js", "javascript-logging/index.js");
 require.alias("boot/index.js", "boot/index.js");
