@@ -43,7 +43,6 @@ Abecedary.prototype.run = function(code, tests) {
   var _this = this;
 
   this.sandbox.then(function(context) {
-    console.log('running code')
     var runner = [
       'window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
       'mocha.suite.suites.shift()',
