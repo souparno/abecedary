@@ -70,6 +70,11 @@ function setup(subexample) {
     sandbox = new Abcedary(iframeUrl, example.iframe, example.options);
     sandbox.run(editor.getValue(), tests.getValue());
 
+    sandbox.on('error', function(error) {
+      console.log('An Error Occured running the tests:' );
+      console.log(error.stack);
+    });
+
     // Run whenever a test run completes
     sandbox.on('complete', function(results) {
       sandbox.close();

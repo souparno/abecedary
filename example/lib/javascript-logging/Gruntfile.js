@@ -6,7 +6,7 @@ module.exports = function(grunt) {
       }
     },
     concat: {
-      '../../build/demos/javascript-logging.js': ['../../build/sandbox_vendor.js', 'node_modules/mocha/mocha.js', 'node_modules/abecedary/dist/reporter.js']
+      '../../build/demos/javascript-logging.js': ['../../build/sandbox_vendor.js', 'node_modules/mocha/mocha.js', , '../../../dist/reporter.js']
     },
     watch: {
       scripts: {

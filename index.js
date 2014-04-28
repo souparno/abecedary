@@ -1,4 +1,5 @@
-var component = require('./lib/component')
+var component = require('./lib/component'),
+    runner = require('./lib/runner.js'),
     stuff = component('adamfortuna-stuff.js'),
     emitter = component('component-emitter'),
     Promise = component('then-promise'),
@@ -15,6 +16,7 @@ function Abecedary(iframeUrl, template, options) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
       context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
+      context.on('error', error.bind(this));
 
       // Contains the initial HTML and libraries needed to run tests,
       // as well as the tests themselves, but not the code
@@ -27,13 +29,18 @@ function Abecedary(iframeUrl, template, options) {
   //  Publicize the run is done
   var runComplete = function(report) {
     this.emit('complete', report);
-  }
+  };
 
   // Setup Mocha upon completion
   var loaded = function(promise, report) {
     this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
     promise.resolve(this.context);
-  }
+  };
+
+  // Emit the error
+  var error = function(error) {
+    this.emit('error', error, this);
+  };
 }
 emitter(Abecedary.prototype);
 
@@ -42,17 +49,10 @@ emitter(Abecedary.prototype);
 Abecedary.prototype.run = function(code, tests) {
   var _this = this;
 
+  //lineNumber || columnNumber 
   this.sandbox.then(function(context) {
-    var runner = [
-      'window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
-      'mocha.suite.suites.shift()',
-      tests || _this.tests,
-      'window.mocha.run();',
-      true
-    ].join('\n');
-
     try {
-      context.evaljs(runner);
+      context.evaljs(runner(code, tests || _this.tests));
     } catch(e) {
       _this.emit('error', e);
     }

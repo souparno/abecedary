@@ -15,6 +15,7 @@
     "mocha": "~1.17.0",
     "grunt": "~0.4.2",
     "grunt-shell": "~0.6.4",
+    "grunt-contrib-watch": "~0.5.3",
     "decomponentify": "~0.0.3",
     "chai": "~1.8.1",
     "sinon": "~1.7.3"

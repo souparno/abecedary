@@ -1,5 +1,6 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Abecedary=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-var component = _dereq_('./lib/component')
+var component = _dereq_('./lib/component'),
+    runner = _dereq_('./lib/runner.js'),
     stuff = component('adamfortuna-stuff.js'),
     emitter = component('component-emitter'),
     Promise = component('then-promise'),
@@ -16,6 +17,7 @@ function Abecedary(iframeUrl, template, options) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
       context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
+      context.on('error', error.bind(this));
 
       // Contains the initial HTML and libraries needed to run tests,
       // as well as the tests themselves, but not the code
@@ -28,13 +30,18 @@ function Abecedary(iframeUrl, template, options) {
   //  Publicize the run is done
   var runComplete = function(report) {
     this.emit('complete', report);
-  }
+  };
 
   // Setup Mocha upon completion
   var loaded = function(promise, report) {
     this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
     promise.resolve(this.context);
-  }
+  };
+
+  // Emit the error
+  var error = function(error) {
+    this.emit('error', error, this);
+  };
 }
 emitter(Abecedary.prototype);
 
@@ -43,17 +50,10 @@ emitter(Abecedary.prototype);
 Abecedary.prototype.run = function(code, tests) {
   var _this = this;
 
+  //lineNumber || columnNumber 
   this.sandbox.then(function(context) {
-    var runner = [
-      'window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
-      'mocha.suite.suites.shift()',
-      tests || _this.tests,
-      'window.mocha.run();',
-      true
-    ].join('\n');
-
     try {
-      context.evaljs(runner);
+      context.evaljs(runner(code, tests || _this.tests));
     } catch(e) {
       _this.emit('error', e);
     }
@@ -68,7 +68,7 @@ Abecedary.prototype.close = function(data) {
 
 module.exports = Abecedary;
 
-},{"./lib/component":2}],2:[function(_dereq_,module,exports){
+},{"./lib/component":2,"./lib/runner.js":3}],2:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -1113,6 +1113,28 @@ _require.alias("adamfortuna-stuff.js/lib/stuff.js", "abecedary/deps/stuff.js/ind
 _require.alias("adamfortuna-stuff.js/lib/stuff.js", "stuff.js/index.js");
 _require.alias("adamfortuna-stuff.js/lib/stuff.js", "adamfortuna-stuff.js/index.js");module.exports = _require;
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],3:[function(_dereq_,module,exports){
+// This runs the code in the stuff.js iframe
+// There is some error handling in here in case the tests themselves throw an erorr
+
+module.exports = function(code, tests) {
+  return [
+    'try {',
+    '  window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
+    '  mocha.suite.suites.shift()',
+    '',
+    '// Begin Tests',
+    tests,
+    '// End Tests',
+    '',
+    '  window.mocha.run();', 
+    '} catch(e) {', 
+    '  rethrow(e, JSON.parse('+JSON.stringify(JSON.stringify(tests))+'), 6);',
+    '}',
+    true
+  ].join('\n');
+}
+
 },{}]},{},[1])
 (1)
 });
