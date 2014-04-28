@@ -2,7 +2,7 @@
   "name": "abecedary",
   "repo": "codeschool/abecedary",
   "description": "Crossdomain JavaScript test runner for Mocha.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "keywords": ["mocha", "stuff.js", "iframe", "test"],
   "dependencies": { },
   "development": {
