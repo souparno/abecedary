@@ -7,13 +7,22 @@ var component = _dereq_('./lib/component'),
     extend = component('segmentio-extend');
 
 function Abecedary(iframeUrl, template, options) {
+  var generateElement = function() {
+    var element = document.createElement('div');
+    element.style.cssText = 'display:none;';
+    document.body.appendChild(element);
+    return element;
+  }
+
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
   this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
+  this.element = this.options.element || generateElement()
+  delete(this.options.element);
 
   this.sandbox = new Promise(function (resolve, reject) {
-    stuff(this.iframeUrl, function (context) {
+    stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
       context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
@@ -63,7 +72,7 @@ Abecedary.prototype.run = function(code, tests) {
 // Public
 //   Removes any iFrames that are lingering around
 Abecedary.prototype.close = function(data) {
-  stuff.clear();
+  this.element.parentElement.removeChild(this.element);
 }
 
 module.exports = Abecedary;

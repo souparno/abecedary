@@ -73,6 +73,7 @@ function setup(subexample) {
     sandbox.on('error', function(error) {
       console.log('An Error Occured running the tests:' );
       console.log(error.stack);
+      sandbox.close();
     });
 
     // Run whenever a test run completes
