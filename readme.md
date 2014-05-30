@@ -7,7 +7,7 @@ abecedary is a client side JavaScript executor API that allows for non-opinionat
 > abecedary
 > n.  1.  A primer; the first principle or rudiment of anything.
 
-To see an example project using abecedary, check out [abecedary-example](https://github.com/codeschool/abecedary-example).
+To see an example project using abecedary, check out [abecedary-example](https://github.com/codeschool/abecedary/tree/master/example).
 
 ## Example
 
