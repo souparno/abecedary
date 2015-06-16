@@ -55,7 +55,7 @@ function generateStackstrace(error, code) {
 
 
 // Deep clone that only grabs strings and numbers
-function cleanObject(error, depth) {
+function cleanObject(error, index, depth) {
   if(!error || depth > 5) { return null; }
 
   depth = depth || 0;
@@ -68,10 +68,10 @@ function cleanObject(error, depth) {
       } else if(typeof(error[key]) == 'string' || typeof(error[key]) == 'number') {
         response[key] = error[key];
       } else if(typeof(error[key]) == 'object') {
-        response[key] = cleanObject(error[key], depth + 1)
+        response[key] = cleanObject(error[key], index, depth + 1);
       }
     } catch(e) {
-      response[key] = 'Unable to process this result.'
+      response[key] = 'Unable to process this result.';
     }
   };
 
