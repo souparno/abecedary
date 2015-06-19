@@ -25,7 +25,7 @@ var iframeTemplate = [
   '  </body>',
   '</html>'
 ].join('\n');
-var sandbox = new Abcedary('http://somewhere.amazon.s3.com/iframe.html', iframeTemplate);
+var sandbox = new Abecedary('http://somewhere.amazon.s3.com/iframe.html', iframeTemplate);
 
 sandbox.on('complete', function(results) {
   console.log('Run Complete!');

@@ -55,13 +55,13 @@ emitter(Abecedary.prototype);
 
 // Public API to run tests against code
 // Doesn't return anything, but emit a `complete` event when finished
-Abecedary.prototype.run = function(code, tests) {
+Abecedary.prototype.run = function(code, tests, globals) {
   var _this = this;
 
   //lineNumber || columnNumber 
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(code, tests || _this.tests));
+      context.evaljs(runner(code, tests || _this.tests, globals));
     } catch(e) {
       _this.emit('error', e);
     }

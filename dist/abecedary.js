@@ -1,6 +1,6 @@
-!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Abecedary=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var component = require('./lib/component'),
-    runner = require('./lib/runner.js'),
+!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.Abecedary=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+var component = _dereq_('./lib/component'),
+    runner = _dereq_('./lib/runner.js'),
     stuff = component('adamfortuna-stuff.js'),
     emitter = component('component-emitter'),
     Promise = component('then-promise'),
@@ -56,13 +56,13 @@ emitter(Abecedary.prototype);
 
 // Public API to run tests against code
 // Doesn't return anything, but emit a `complete` event when finished
-Abecedary.prototype.run = function(code, tests) {
+Abecedary.prototype.run = function(code, tests, globals) {
   var _this = this;
 
   //lineNumber || columnNumber 
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(code, tests || _this.tests));
+      context.evaljs(runner(code, tests || _this.tests, globals));
     } catch(e) {
       _this.emit('error', e);
     }
@@ -77,8 +77,9 @@ Abecedary.prototype.close = function(data) {
 
 module.exports = Abecedary;
 
-},{"./lib/component":2,"./lib/runner.js":3}],2:[function(require,module,exports){
-var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};
+},{"./lib/component":2,"./lib/runner.js":3}],2:[function(_dereq_,module,exports){
+(function (global){
+
 /**
  * Require the given path.
  *
@@ -1120,14 +1121,22 @@ _require.alias("adamfortuna-stuff.js/lib/stuff.js", "abecedary/deps/stuff.js/lib
 _require.alias("adamfortuna-stuff.js/lib/stuff.js", "abecedary/deps/stuff.js/index.js");
 _require.alias("adamfortuna-stuff.js/lib/stuff.js", "stuff.js/index.js");
 _require.alias("adamfortuna-stuff.js/lib/stuff.js", "adamfortuna-stuff.js/index.js");module.exports = _require;
-},{}],3:[function(require,module,exports){
+}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],3:[function(_dereq_,module,exports){
 // This runs the code in the stuff.js iframe
 // There is some error handling in here in case the tests themselves throw an erorr
 
-module.exports = function(code, tests) {
+module.exports = function(code, tests, globals) {
+  if (!globals) {
+    globals = {};
+  }
   return [
     'try {',
     '  window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
+    '  var globals = JSON.parse('+JSON.stringify(JSON.stringify(globals))+');',
+    '  for (var property in globals) {',
+    '    window[property] = globals[property];',
+    '  }',
     '  mocha.suite.suites.splice(0, mocha.suite.suites.length)',
     '',
     '// Begin Tests',

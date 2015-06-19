@@ -61,7 +61,8 @@ function cleanObject(error, index, depth) {
   depth = depth || 0;
 
   var response = {};
-  for(var key in error) {
+  var keys = Object.getOwnPropertyNames(error);
+  for(var key in keys) {
     try {
       if(key[0] == "_" || key[0] == "$" || key == 'ctx' || key == 'parent') {
         // Skip underscored variables
