@@ -8,9 +8,15 @@ module.exports = function(grunt) {
         }
       }
     },
-    shell: {
-      browserify: {
-        command: 'browserify -s Abecedary -t decomponentify -t brfs index.js > dist/abecedary.js'
+    browserify: {
+      dist: {
+        src: ['index.js'],
+        dest: 'dist/abecedary.js',
+        options: {
+          browserifyOptions: {
+            standalone: 'Abecedary'
+          }
+        }
       }
     },
     karma: {
@@ -28,7 +34,7 @@ module.exports = function(grunt) {
       //run unit tests with karma (server needs to be already running)
       karma: {
         files: ['lib/**/*.js', 'test/**/*.js'],
-        tasks: ['shell:browserify', 'karma:unit:run']
+        tasks: ['browserify', 'karma:unit:run']
       },
       scripts: {
         files: ['index.js', 'lib/runner.js'],
@@ -37,12 +43,12 @@ module.exports = function(grunt) {
     }
   });
 
+  grunt.loadNpmTasks('grunt-browserify');
   grunt.loadNpmTasks('grunt-contrib-connect');
-  grunt.loadNpmTasks('grunt-karma');
   grunt.loadNpmTasks('grunt-contrib-watch');
-  grunt.loadNpmTasks('grunt-shell');
+  grunt.loadNpmTasks('grunt-karma');
 
-  grunt.registerTask('default', ['shell:browserify']);
+  grunt.registerTask('default', ['browserify']);
   grunt.registerTask('develop', ['connect:server', 'karma:unit:start', 'watch']);
   grunt.registerTask('test', ['default', 'connect:server', 'karma:continuous']);
   grunt.registerTask('w', ['watch']);

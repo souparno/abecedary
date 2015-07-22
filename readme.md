@@ -130,7 +130,7 @@ Will run the `callback` function after running tests.
 Will remove all [stuff.js](https://github.com/Codecademy/stuff.js) iFrames.
 
 
-# Building
+# Building the Demo Application
 
 Until split, the out the build step is somewhat confusing here due to the number of assets.
 
@@ -141,6 +141,7 @@ $ component install
 $ component build
 ```
 
+# Building JavaScript Sandbox Assets
 To build the JavaScript used within the iFrame (which contains mocha, sinon and a number of other testing libraries), you'll need to do a few more steps
 
 ```

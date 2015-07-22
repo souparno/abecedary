@@ -1,9 +1,9 @@
-var component = require('./lib/component'),
-    runner = require('./lib/runner.js'),
-    stuff = component('adamfortuna-stuff.js'),
-    emitter = component('component-emitter'),
-    Promise = component('then-promise'),
-    extend = component('segmentio-extend');
+var runner = require('./lib/runner.js'),
+    stuff = require('stuff.js'),
+    EventEmitter = require('events').EventEmitter,
+    Promise = require('promise/lib/es6-extensions'),
+    extend = require('extend'),
+    inherits = require('inherits');
 
 function Abecedary(iframeUrl, template, options) {
   var generateElement = function() {
@@ -51,14 +51,14 @@ function Abecedary(iframeUrl, template, options) {
     this.emit('error', error, this);
   };
 }
-emitter(Abecedary.prototype);
+inherits(Abecedary, EventEmitter);
 
 // Public API to run tests against code
 // Doesn't return anything, but emit a `complete` event when finished
 Abecedary.prototype.run = function(code, tests, globals) {
   var _this = this;
 
-  //lineNumber || columnNumber 
+  //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
       context.evaljs(runner(code, tests || _this.tests, globals));
