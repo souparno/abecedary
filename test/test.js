@@ -1,27 +1,47 @@
 var assert = chai.assert;
 
 describe("Abecedary", function() {
-  var iframeUrl = "http://localhost:4000/dist/iframe.html",
+  var iframeUrl = "http://localhost:4000/stuff.js/dist/secure/index.html",
       iframeContent = [
         '<!DOCTYPE html>',
         '<html>',
         '<head>',
         '<title>Sandbox</title>',
-        '<link rel="stylesheet" href="http://localhost:4000/node_modules/mocha/mocha.css" />',
+        '<base href="http://localhost:4000">',
         '</head>',
         '<body>',
-        '<script src="../node_modules/mocha/mocha.js"></script>',
-        '<script src="http://localhost:4000/dist/reporter.js"></script>',
+        '<script src="systemjs/dist/system.src.js"></script>',
+        '<script src="abecedary-support.js"></script>',
         '</body>',
         '</html>'
-      ].join('\n');
+      ].join('\n'),
+      systemjs = {
+        'defaultJSExtensions': true,
+        'map': {
+          'abecedary-interface': 'abecedary-interface.js',
+          'abecedary-reporter': 'abecedary-reporter.js',
+          'runner': 'mocha-runner.js',
+          'mocha-details': 'mocha-details.js',
+          'mocha': 'mocha/mocha.js',
+          'extend': 'extend/index.js',
+          'chai': 'chai/chai.js'
+        },
+        'meta': {
+          'mocha': {
+            'format': 'global',
+            'exports': 'mocha'
+          }
+        }
+      };
 
 
   describe('sandbox', function() {
     var sandbox;
 
     beforeEach(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent, {});
+      sandbox = new Abecedary(iframeUrl, iframeContent, {
+        systemjs: systemjs
+      });
     });
 
     afterEach(function() {
@@ -49,11 +69,11 @@ describe("Abecedary", function() {
     it('runs code with error', function(done) {
       var code = "4";
       var tests = "if (code != 5) throw new Error('The code was not 5');";
-      sandbox.run(code, tests);
       sandbox.on('error', function(error) {
         assert(error);
         done();
       });
+      sandbox.run(code, tests);
     });
 
     it('runs code with globals', function(done) {
@@ -63,13 +83,13 @@ describe("Abecedary", function() {
       var globals = {
         subjects: ['test1', 'test2']
       };
-      sandbox.run(code, tests, globals);
       sandbox.on('complete', function() {
         done();
       });
       sandbox.on('error', function(error) {
         done(error);
       });
+      sandbox.run(code, tests, globals);
     });
 
     it('runs code with globals and error', function(done) {
@@ -79,10 +99,10 @@ describe("Abecedary", function() {
       var globals = {
         subjects: ['test1', 'test3']
       };
-      sandbox.run(code, tests, globals);
       sandbox.on('error', function() {
         done();
       });
+      sandbox.run(code, tests, globals);
     });
 
     it('returns early on failure', function(done) {
@@ -98,13 +118,16 @@ describe("Abecedary", function() {
           "  throw new Error('fails');",
           "});"
         ].join('\n')
-      sandbox.run(code, tests);
       sandbox.on("complete", function(report) {
         assert(report);
         assert(report.failures.length == 1);
         assert(report.passes.length == 1);
         done()
       });
+      sandbox.on('error', function(error) {
+        done(error);
+      });
+      sandbox.run(code, tests);
     });
 
     it('returns details', function(done) {
@@ -117,13 +140,16 @@ describe("Abecedary", function() {
           "  return 'details';",
           "});"
         ].join('\n');
-      sandbox.run(code, tests);
       sandbox.on("complete", function(report) {
         assert(report);
         assert(report.passes.length == 1);
         assert(report.details.details == 'details');
         done();
       });
+      sandbox.on('error', function(error) {
+        done(error);
+      });
+      sandbox.run(code, tests);
     });
   });
 
@@ -131,7 +157,12 @@ describe("Abecedary", function() {
     var sandbox;
 
     beforeEach(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent, {bail: false});
+      sandbox = new Abecedary(iframeUrl, iframeContent, {
+        systemjs: systemjs,
+        'mocha': {
+          'bail': false
+        }
+      });
     });
 
     afterEach(function() {
@@ -152,13 +183,16 @@ describe("Abecedary", function() {
         "  throw new Error('fails');",
         "});"
       ].join('\n');
-      sandbox.run(code, tests);
       sandbox.on("complete", function(report) {
         assert(report);
         assert(report.failures.length == 2);
         assert(report.passes.length == 1);
         done()
       });
+      sandbox.on('error', function(error) {
+        done(error);
+      });
+      sandbox.run(code, tests);
     });
 
     it('returns details with multiple results', function(done) {
@@ -174,7 +208,6 @@ describe("Abecedary", function() {
           "  return 'details';",
           "});"
         ].join('\n');
-      sandbox.run(code, tests);
       sandbox.on("complete", function(report) {
         assert(report);
         assert(report.passes.length == 1);
@@ -182,6 +215,63 @@ describe("Abecedary", function() {
         assert(report.details.details == 'details');
         done();
       });
+      sandbox.on('error', function(error) {
+        done(error);
+      });
+      sandbox.run(code, tests);
+    });
+  });
+
+  describe('reused sandbox', function() {
+    var sandbox;
+    before(function() {
+      sandbox = new Abecedary(iframeUrl, iframeContent, {
+        systemjs: systemjs
+      });
+    });
+
+    after(function() {
+      sandbox.removeAllListeners();
+      sandbox.close();
+    });
+
+    it('runs test the first time', function(done) {
+      var code = "5",
+        tests = [
+          "var assert = require('chai').assert;",
+          "it('test1', function() {",
+          "  assert.equal(code, 5);",
+          "});"
+        ].join('\n')
+      sandbox.on("complete", function(report) {
+        assert(report);
+        assert(report.passes.length == 1);
+        done()
+      });
+      sandbox.on('error', function(error) {
+        done(error);
+      });
+      sandbox.run(code, tests);
+    });
+
+    it('runs tests a second time', function(done) {
+      var code = "4",
+        tests = [
+          "var assert = require('chai').assert;",
+          "it('test1', function() {",
+          "  debugger;",
+          "  assert.equal(code, 4);",
+          "});"
+        ].join('\n')
+      sandbox.on("complete", function(report) {
+        assert(report);
+        assert(report.passes.length == 1);
+        done()
+      });
+      sandbox.on('error', function(error) {
+        done(error);
+      });
+      sandbox.run(code, tests);
     });
   });
 });

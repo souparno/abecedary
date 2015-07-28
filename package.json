@@ -21,10 +21,13 @@
     "stuff.js": "stuff"
   },
   "dependencies": {
+    "chai": "^3.2.0",
     "extend": "^3.0.0",
     "inherits": "^2.0.1",
     "promise": "^7.0.3",
-    "stuff.js": "git+https://github.com/codeschool/stuff.js#0.3.0"
+    "sinon": "^1.15.4",
+    "stuff.js": "git+https://github.com/codeschool/stuff.js#0.3.0",
+    "systemjs": "^0.18.4"
   },
   "devDependencies": {
     "browserify": "^10.2.6",

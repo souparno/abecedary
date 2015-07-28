@@ -16,7 +16,8 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
+  this.options.mocha = extend({bail: true, ignoreLeaks: true }, this.options.mocha);
+  this.options.systemjs = this.options.systemjs || {};
   this.element = this.options.element || generateElement()
   delete(this.options.element);
 
@@ -24,26 +25,20 @@ function Abecedary(iframeUrl, template, options) {
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
-      context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
       context.on('error', error.bind(this));
+      context.on('loaded', function() {
+        resolve(context);
+      });
 
       // Contains the initial HTML and libraries needed to run tests,
       // as well as the tests themselves, but not the code
       context.load(this.template);
-
-      this.context = context;
     }.bind(this));
   }.bind(this));
 
   //  Publicize the run is done
   var runComplete = function(report) {
     this.emit('complete', report);
-  };
-
-  // Setup Mocha upon completion
-  var loaded = function(promise, report) {
-    this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
-    promise.resolve(this.context);
   };
 
   // Emit the error
@@ -61,8 +56,9 @@ Abecedary.prototype.run = function(code, tests, globals) {
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(code, tests || _this.tests, globals));
+      context.evaljs(runner(_this.options, code, tests || _this.tests || '', globals));
     } catch(e) {
+      debugger;
       _this.emit('error', e);
     }
   });

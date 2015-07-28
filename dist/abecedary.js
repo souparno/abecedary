@@ -17,7 +17,8 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
+  this.options.mocha = extend({bail: true, ignoreLeaks: true }, this.options.mocha);
+  this.options.systemjs = this.options.systemjs || {};
   this.element = this.options.element || generateElement()
   delete(this.options.element);
 
@@ -25,26 +26,20 @@ function Abecedary(iframeUrl, template, options) {
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
-      context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
       context.on('error', error.bind(this));
+      context.on('loaded', function() {
+        resolve(context);
+      });
 
       // Contains the initial HTML and libraries needed to run tests,
       // as well as the tests themselves, but not the code
       context.load(this.template);
-
-      this.context = context;
     }.bind(this));
   }.bind(this));
 
   //  Publicize the run is done
   var runComplete = function(report) {
     this.emit('complete', report);
-  };
-
-  // Setup Mocha upon completion
-  var loaded = function(promise, report) {
-    this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
-    promise.resolve(this.context);
   };
 
   // Emit the error
@@ -62,8 +57,9 @@ Abecedary.prototype.run = function(code, tests, globals) {
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(code, tests || _this.tests, globals));
+      context.evaljs(runner(_this.options, code, tests || _this.tests || '', globals));
     } catch(e) {
+      debugger;
       _this.emit('error', e);
     }
   });
@@ -77,124 +73,95 @@ Abecedary.prototype.close = function(data) {
 
 module.exports = Abecedary;
 
-},{"./lib/runner.js":2,"events":5,"extend":3,"inherits":7,"promise/lib/es6-extensions":9,"stuff.js":11}],2:[function(require,module,exports){
+},{"./lib/runner.js":2,"events":4,"extend":6,"inherits":7,"promise/lib/es6-extensions":9,"stuff.js":11}],2:[function(require,module,exports){
 // This runs the code in the stuff.js iframe
 // There is some error handling in here in case the tests themselves throw an erorr
-
-module.exports = function(code, tests, globals) {
+function generateTestWrapper(globals, tests) {
+  var argumentList = [],
+      argumentValues = [];
+  for (var property in globals) {
+    argumentList.push(property);
+    argumentValues.push('globals.' + property);
+  }
+  return [
+    'var tests,',
+    '    code = require("code"),',
+    '    globals = require("globals");',
+    '(function(' + argumentList.join(',') + ') {',
+    '  tests = function() {',
+    '    try {',
+           tests,
+    '    } catch(e) {',
+    '      rethrow(e, ' + JSON.stringify(JSON.stringify(tests)) + ', 0);',
+    '    }',
+    '  };',
+    '})(' + argumentValues.join(',') + ');',
+    'module.exports = tests;'
+  ].join('\n');
+}
+module.exports = function(options, code, tests, globals) {
   if (!globals) {
     globals = {};
   }
   return [
     'try {',
-    '  window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
-    '  var globals = JSON.parse('+JSON.stringify(JSON.stringify(globals))+');',
-    '  for (var property in globals) {',
-    '    window[property] = globals[property];',
-    '  }',
-    '  mocha.suite.suites.splice(0, mocha.suite.suites.length)',
+    '  window.define = System.amdDefine;',
+    '  window.require = window.requirejs = System.amdRequire;',
     '',
-    '// Begin Tests',
-    tests,
-    '// End Tests',
+    '  var systemNormalize = System.normalize;',
+    '  System.normalize = function(name, parentName, parentAddress) {',
+    '    if ("tests" == name) {',
+    '      return name;',
+    '    }',
+    '    return systemNormalize.apply(this, arguments);',
+    '  };',
+    '  var systemFetch = System.fetch;',
+    '  System.fetch = function(load) {',
+    '    if ("tests" == load.name) {',
+    '      return new Promise(function(resolve, reject) {',
+    '        resolve(' + JSON.stringify(generateTestWrapper(globals, tests)) + ');',
+    '      });',
+    '    }',
+    '    return systemFetch.apply(this, arguments);',
+    '  };',
     '',
-    '  window.mocha.run();', 
-    '} catch(e) {', 
+    '  var options = JSON.parse('+JSON.stringify(JSON.stringify(options))+');',
+    '  System.config(options.systemjs);',
+    '',
+    '  define("options", function(require, exports, module) {',
+    '    return options;',
+    '  });',
+    '',
+    '  define("code", function(require, exports, module) {',
+    '    return JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
+    '  });',
+    '',
+    '  define("globals", function(require, exports, module) {',
+    '    return JSON.parse('+JSON.stringify(JSON.stringify(globals))+');',
+    '  });',
+    '',
+    '  System.import("runner").then(function(runner) {',
+    '    runner();',
+    '    System.normalize = systemNormalize;',
+    '    System.fetch = systemFetch;',
+    '    System.normalize("runner").then(function(name) {',
+    '      System.delete(name);',
+    '    });',
+    '    System.normalize("tests").then(function(name) {',
+    '      System.delete(name);',
+    '    });',
+    '    System.normalize("code").then(function(name) {',
+    '      System.delete(name);',
+    '    });',
+    '  });',
+    '',
+    '} catch(e) {',
     '  rethrow(e, JSON.parse('+JSON.stringify(JSON.stringify(tests))+'), 6);',
-    '}',
-    true
+    '}'
   ].join('\n');
 }
 
 },{}],3:[function(require,module,exports){
-'use strict';
-
-var hasOwn = Object.prototype.hasOwnProperty;
-var toStr = Object.prototype.toString;
-
-var isArray = function isArray(arr) {
-	if (typeof Array.isArray === 'function') {
-		return Array.isArray(arr);
-	}
-
-	return toStr.call(arr) === '[object Array]';
-};
-
-var isPlainObject = function isPlainObject(obj) {
-	if (!obj || toStr.call(obj) !== '[object Object]') {
-		return false;
-	}
-
-	var hasOwnConstructor = hasOwn.call(obj, 'constructor');
-	var hasIsPrototypeOf = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
-	// Not own constructor property must be Object
-	if (obj.constructor && !hasOwnConstructor && !hasIsPrototypeOf) {
-		return false;
-	}
-
-	// Own properties are enumerated firstly, so to speed up,
-	// if last one is own, then all properties are own.
-	var key;
-	for (key in obj) {/**/}
-
-	return typeof key === 'undefined' || hasOwn.call(obj, key);
-};
-
-module.exports = function extend() {
-	var options, name, src, copy, copyIsArray, clone,
-		target = arguments[0],
-		i = 1,
-		length = arguments.length,
-		deep = false;
-
-	// Handle a deep copy situation
-	if (typeof target === 'boolean') {
-		deep = target;
-		target = arguments[1] || {};
-		// skip the boolean and the target
-		i = 2;
-	} else if ((typeof target !== 'object' && typeof target !== 'function') || target == null) {
-		target = {};
-	}
-
-	for (; i < length; ++i) {
-		options = arguments[i];
-		// Only deal with non-null/undefined values
-		if (options != null) {
-			// Extend the base object
-			for (name in options) {
-				src = target[name];
-				copy = options[name];
-
-				// Prevent never-ending loop
-				if (target !== copy) {
-					// Recurse if we're merging plain objects or arrays
-					if (deep && copy && (isPlainObject(copy) || (copyIsArray = isArray(copy)))) {
-						if (copyIsArray) {
-							copyIsArray = false;
-							clone = src && isArray(src) ? src : [];
-						} else {
-							clone = src && isPlainObject(src) ? src : {};
-						}
-
-						// Never move original objects, clone them
-						target[name] = extend(deep, clone, copy);
-
-					// Don't bring in undefined values
-					} else if (typeof copy !== 'undefined') {
-						target[name] = copy;
-					}
-				}
-			}
-		}
-	}
-
-	// Return the modified object
-	return target;
-};
-
-
-},{}],4:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -262,7 +229,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":5}],5:[function(require,module,exports){
+},{"events":4}],4:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -565,7 +532,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -656,6 +623,94 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 process.umask = function() { return 0; };
+
+},{}],6:[function(require,module,exports){
+'use strict';
+
+var hasOwn = Object.prototype.hasOwnProperty;
+var toStr = Object.prototype.toString;
+
+var isArray = function isArray(arr) {
+	if (typeof Array.isArray === 'function') {
+		return Array.isArray(arr);
+	}
+
+	return toStr.call(arr) === '[object Array]';
+};
+
+var isPlainObject = function isPlainObject(obj) {
+	if (!obj || toStr.call(obj) !== '[object Object]') {
+		return false;
+	}
+
+	var hasOwnConstructor = hasOwn.call(obj, 'constructor');
+	var hasIsPrototypeOf = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
+	// Not own constructor property must be Object
+	if (obj.constructor && !hasOwnConstructor && !hasIsPrototypeOf) {
+		return false;
+	}
+
+	// Own properties are enumerated firstly, so to speed up,
+	// if last one is own, then all properties are own.
+	var key;
+	for (key in obj) {/**/}
+
+	return typeof key === 'undefined' || hasOwn.call(obj, key);
+};
+
+module.exports = function extend() {
+	var options, name, src, copy, copyIsArray, clone,
+		target = arguments[0],
+		i = 1,
+		length = arguments.length,
+		deep = false;
+
+	// Handle a deep copy situation
+	if (typeof target === 'boolean') {
+		deep = target;
+		target = arguments[1] || {};
+		// skip the boolean and the target
+		i = 2;
+	} else if ((typeof target !== 'object' && typeof target !== 'function') || target == null) {
+		target = {};
+	}
+
+	for (; i < length; ++i) {
+		options = arguments[i];
+		// Only deal with non-null/undefined values
+		if (options != null) {
+			// Extend the base object
+			for (name in options) {
+				src = target[name];
+				copy = options[name];
+
+				// Prevent never-ending loop
+				if (target !== copy) {
+					// Recurse if we're merging plain objects or arrays
+					if (deep && copy && (isPlainObject(copy) || (copyIsArray = isArray(copy)))) {
+						if (copyIsArray) {
+							copyIsArray = false;
+							clone = src && isArray(src) ? src : [];
+						} else {
+							clone = src && isPlainObject(src) ? src : {};
+						}
+
+						// Never move original objects, clone them
+						target[name] = extend(deep, clone, copy);
+
+					// Don't bring in undefined values
+					} else if (typeof copy !== 'undefined') {
+						target[name] = copy;
+					}
+				}
+			}
+		}
+	}
+
+	// Return the modified object
+	return target;
+};
+
 
 },{}],7:[function(require,module,exports){
 if (typeof Object.create === 'function') {
@@ -1083,7 +1138,7 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":6,"domain":4}],11:[function(require,module,exports){
+},{"_process":5,"domain":3}],11:[function(require,module,exports){
 (function (global){
 ; var __browserify_shim_require__=require;(function browserifyShim(module, exports, require, define, browserify_shim__define__module__export__) {
 // **stuff.js** provides a secure and convinient way to sandbox untrusted
