@@ -38,13 +38,13 @@ describe("Abecedary", function() {
   describe('sandbox', function() {
     var sandbox;
 
-    beforeEach(function() {
+    before(function() {
       sandbox = new Abecedary(iframeUrl, iframeContent, {
         systemjs: systemjs
       });
     });
 
-    afterEach(function() {
+    after(function() {
       sandbox.removeAllListeners();
       sandbox.close();
     });
@@ -56,20 +56,20 @@ describe("Abecedary", function() {
     it('runs code', function(done) {
       var code = "5";
       var tests = "if (code != 5) throw new Error('The code was not 5');";
-      sandbox.run(code, tests);
-      sandbox.on('complete', function(data) {
+      sandbox.once('complete', function(data) {
         assert(data)
         done();
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
+      sandbox.run(code, tests);
     });
 
     it('runs code with error', function(done) {
       var code = "4";
       var tests = "if (code != 5) throw new Error('The code was not 5');";
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         assert(error);
         done();
       });
@@ -83,10 +83,10 @@ describe("Abecedary", function() {
       var globals = {
         subjects: ['test1', 'test2']
       };
-      sandbox.on('complete', function() {
+      sandbox.once('complete', function() {
         done();
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests, globals);
@@ -99,7 +99,7 @@ describe("Abecedary", function() {
       var globals = {
         subjects: ['test1', 'test3']
       };
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         assert.equal("Error", error.name);
         assert.equal("The subjects did not contain 'test2'.", error.message);
         assert.equal(2, error.position.line);
@@ -122,13 +122,13 @@ describe("Abecedary", function() {
           "  throw new Error('fails');",
           "});"
         ].join('\n')
-      sandbox.on("complete", function(report) {
+      sandbox.once("complete", function(report) {
         assert(report);
         assert(report.failures.length == 1);
         assert(report.passes.length == 1);
         done()
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests);
@@ -144,13 +144,13 @@ describe("Abecedary", function() {
           "  return 'details';",
           "});"
         ].join('\n');
-      sandbox.on("complete", function(report) {
+      sandbox.once("complete", function(report) {
         assert(report);
         assert(report.passes.length == 1);
         assert(report.details.details == 'details');
         done();
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests);
@@ -160,7 +160,7 @@ describe("Abecedary", function() {
   describe('sandbox with bail:false', function() {
     var sandbox;
 
-    beforeEach(function() {
+    before(function() {
       sandbox = new Abecedary(iframeUrl, iframeContent, {
         systemjs: systemjs,
         'mocha': {
@@ -169,7 +169,7 @@ describe("Abecedary", function() {
       });
     });
 
-    afterEach(function() {
+    after(function() {
       sandbox.removeAllListeners();
       sandbox.close();
     });
@@ -187,13 +187,13 @@ describe("Abecedary", function() {
         "  throw new Error('fails');",
         "});"
       ].join('\n');
-      sandbox.on("complete", function(report) {
+      sandbox.once("complete", function(report) {
         assert(report);
         assert(report.failures.length == 2);
         assert(report.passes.length == 1);
         done()
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests);
@@ -212,14 +212,14 @@ describe("Abecedary", function() {
           "  return 'details';",
           "});"
         ].join('\n');
-      sandbox.on("complete", function(report) {
+      sandbox.once("complete", function(report) {
         assert(report);
         assert(report.passes.length == 1);
         assert(report.failures.length == 1);
         assert(report.details.details == 'details');
         done();
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests);
