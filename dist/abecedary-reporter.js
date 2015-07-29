@@ -5,7 +5,7 @@ function cleanObject(error, index, depth) {
   var response = {};
 
   if(error instanceof Error) {
-    var error = JSON.parse(JSON.stringify(error, ['message', 'name', 'stack']));
+    var error = JSON.parse(JSON.stringify(error, ['message', 'name', 'stack', 'line', 'column', 'description']));
     return generateStacktraceAndPosition(error);
   }
 

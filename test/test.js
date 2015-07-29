@@ -1,7 +1,7 @@
 var assert = chai.assert;
 
 describe("Abecedary", function() {
-  var iframeUrl = "http://localhost:4000/stuff.js/dist/secure/index.html",
+  var iframeUrl = "stuff.js/dist/secure/index.html",
       iframeContent = [
         '<!DOCTYPE html>',
         '<html>',
@@ -103,7 +103,16 @@ describe("Abecedary", function() {
         assert.equal("Error", error.name);
         assert.equal("The subjects did not contain 'test2'.", error.message);
         assert.equal(2, error.position.line);
-        assert.equal(43, error.position.ch);
+        switch(detectStackTraceStyle()) {
+          case 'safari':
+            assert.equal(95, error.position.ch);
+            break;
+          case 'ie':
+            assert.equal(37, error.position.ch);
+            break;
+          default:
+            assert.equal(43, error.position.ch);
+        }
         done();
       });
       sandbox.run(code, tests, globals);
@@ -271,10 +280,22 @@ describe("Abecedary", function() {
         assert(report.failures.length == 1);
         assert(report.failures[0].err);
         assert(report.failures[0].err.message);
-        assert.equal("assert.equals is not a function", report.failures[0].err.message);
         assert(report.failures[0].err.position);
         assert.equal(3, report.failures[0].err.position.line);
-        assert.equal(10, report.failures[0].err.position.ch);
+        switch(detectStackTraceStyle()) {
+          case 'chrome':
+            assert.equal("assert.equals is not a function", report.failures[0].err.message);
+            assert.equal(10, report.failures[0].err.position.ch);
+            break;
+          case 'firefox':
+            assert.equal("assert.equals is not a function", report.failures[0].err.message);
+            assert.equal(3, report.failures[0].err.position.ch);
+            break;
+          case 'safari':
+            assert.equal("undefined is not a function (evaluating \'assert.equals(code, 4)\')", report.failures[0].err.message);
+            assert.equal(16, report.failures[0].err.position.ch);
+            break;
+        }
         done();
       });
       sandbox.once('error', function(error) {
@@ -284,3 +305,23 @@ describe("Abecedary", function() {
     });
   });
 });
+
+function detectStackTraceStyle() {
+  var style = "chrome";
+  try {
+    throw new Error("This is an error.");
+  }
+  catch (e) {
+    stackArray = e.stack.split('\n');
+    if (e.line != undefined) {
+      style = 'safari';
+    }
+    else if (e.description != undefined) {
+      style = 'ie';
+    }
+    else if (/(.*)(\d+):(\d+)$/.test(stackArray[0])) {
+      style = 'firefox';
+    }
+  }
+  return style;
+}
