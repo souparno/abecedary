@@ -14,8 +14,13 @@ module.exports = function() {
   mocha.setup(extend({ui: 'abecedary-interface', reporter: AbecedaryReporter}, options.mocha));
 
   // Setup Tests
-  require('tests')();
+  try {
+    require('tests')();
+  }
+  catch (error) {
+    rethrow(error);
+  }
 
   // Run Tests
-  mocha.run();
+  return mocha.run();
 };

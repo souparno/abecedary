@@ -5,56 +5,38 @@ if(!eval && execScript) {
 (function(window, parent) {
   window.stuffEmit = parent.stuffEmit;
 
-  window.onerror = function(error) {
-    debugger;
-    stuffEmit("error", error);
-  }
+  window.generateStacktraceAndPosition = function(error) {
+    var safeError = {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        },
+        stack = error.stack.split('\n'),
+        lineNumber = /(.*)(\d+):(\d+)\)$/;
 
-  function generateStackstrace(error, code) {
-    var lines = code.split("\n");
-    return [
-      "" + error.name + ": "+ error.message,
-      "  at line " + error.lineNumber+1 + ":" + error.columnNumber,
-      "",
-      ""+[error.lineNumber-1]+" : " + lines[error.lineNumber-2],
-      ""+[error.lineNumber]+" : " + lines[error.lineNumber-1],
-      ""+[error.lineNumber+1]+">: " + lines[error.lineNumber],
-      ""+[error.lineNumber+2]+" : " + lines[error.lineNumber+1],
-      ""+[error.lineNumber+3]+" : " + lines[error.lineNumber+2]
-    ].join("\n");
-  }
+    if (lineNumber.test(stack[1])) {
+      // Rewrite the stack info.
+      var matches = lineNumber.exec(stack[1]),
+        fixedLineNumber = parseInt(matches[2], 10) - 2,
+        linePosition = parseInt(matches[3], 10);
+      stack[1] = stack[1].replace(lineNumber, "$1" + fixedLineNumber +":$3");
 
-
-  window.rethrow = function(e, tests, offset) {
-    debugger;
-    error = e;
-    try {
-      if(window[e.name]) {
-        var error = new window[e.name](e.message);
-        error.type = e.type;
-        error["arguments"] = e["arguments"];
-
-        // Firefox
-        if(e.lineNumber) { error.lineNumber = e.lineNumber - offset; }
-        if(e.columnNumber) { error.columnNumber = e.columnNumber; }
-
-        // Others
-        if(!e.lineNumber || !e.lineNumber) {
-          var errorPosition = e.stack.split("\n")[1].match(/(\d+):(\d+)\)$/);
-          error.lineNumber = errorPosition[1] - offset;
-          error.columnNumber = +errorPosition[2];
-        }
-
-        if(error.lineNumber) {
-          error.stack = generateStackstrace(error, tests);
-        }
-      }
-    } catch(error) {
-      error = e;
-    } finally {
-      stuffEmit("error", error);
+      safeError.position = {
+        line: fixedLineNumber,
+        ch: linePosition
+      };
+      safeError.stack = stack.join('\n');
     }
-  }
+    return safeError;
+  };
+
+  window.onerror = function(error) {
+    stuffEmit("error", generateStacktraceAndPosition(error));
+  };
+
+  window.rethrow = function(e) {
+    stuffEmit("error", generateStacktraceAndPosition(e));
+  };
 
   stuffEmit('loaded');
 })(window, window.parent)

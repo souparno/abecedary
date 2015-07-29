@@ -78,7 +78,7 @@ describe("Abecedary", function() {
 
     it('runs code with globals', function(done) {
       var code = "5";
-      var tests = "if (subjects.indexOf('test1') != 0) throw new Error('The subjects did not contain \\'test1\\'.');";
+      var tests = "if (subjects.indexOf('test1') != 0) throw new Error('The subjects did not contain \\'test1\\'.');\n";
       tests += "if (subjects.indexOf('test2') != 1) throw new Error('The subjects did not contain \\'test2\\'.');";
       var globals = {
         subjects: ['test1', 'test2']
@@ -94,12 +94,16 @@ describe("Abecedary", function() {
 
     it('runs code with globals and error', function(done) {
       var code = "5";
-      var tests = "if (subjects.indexOf('test1') != 0) throw new Error('The subjects did not contain \\'test1\\'.');";
+      var tests = "if (subjects.indexOf('test1') != 0) throw new Error('The subjects did not contain \\'test1\\'.');\n";
       tests += "if (subjects.indexOf('test2') != 1) throw new Error('The subjects did not contain \\'test2\\'.');";
       var globals = {
         subjects: ['test1', 'test3']
       };
-      sandbox.on('error', function() {
+      sandbox.on('error', function(error) {
+        assert.equal("Error", error.name);
+        assert.equal("The subjects did not contain 'test2'.", error.message);
+        assert.equal(2, error.position.line);
+        assert.equal(43, error.position.ch);
         done();
       });
       sandbox.run(code, tests, globals);
@@ -224,6 +228,7 @@ describe("Abecedary", function() {
 
   describe('reused sandbox', function() {
     var sandbox;
+
     before(function() {
       sandbox = new Abecedary(iframeUrl, iframeContent, {
         systemjs: systemjs
@@ -231,7 +236,6 @@ describe("Abecedary", function() {
     });
 
     after(function() {
-      sandbox.removeAllListeners();
       sandbox.close();
     });
 
@@ -243,12 +247,12 @@ describe("Abecedary", function() {
           "  assert.equal(code, 5);",
           "});"
         ].join('\n')
-      sandbox.on("complete", function(report) {
+      sandbox.once("complete", function(report) {
         assert(report);
         assert(report.passes.length == 1);
         done()
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests);
@@ -259,16 +263,21 @@ describe("Abecedary", function() {
         tests = [
           "var assert = require('chai').assert;",
           "it('test1', function() {",
-          "  debugger;",
-          "  assert.equal(code, 4);",
+          "  assert.equals(code, 4);",
           "});"
-        ].join('\n')
-      sandbox.on("complete", function(report) {
+        ].join('\n');
+      sandbox.once("complete", function(report) {
         assert(report);
-        assert(report.passes.length == 1);
-        done()
+        assert(report.failures.length == 1);
+        assert(report.failures[0].err);
+        assert(report.failures[0].err.message);
+        assert.equal("assert.equals is not a function", report.failures[0].err.message);
+        assert(report.failures[0].err.position);
+        assert.equal(3, report.failures[0].err.position.line);
+        assert.equal(10, report.failures[0].err.position.ch);
+        done();
       });
-      sandbox.on('error', function(error) {
+      sandbox.once('error', function(error) {
         done(error);
       });
       sandbox.run(code, tests);

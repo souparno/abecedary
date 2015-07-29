@@ -1,9 +1,13 @@
-var runner = require('./lib/runner.js'),
+var runner = require('./lib/systemjs-runner.js'),
     stuff = require('stuff.js'),
     EventEmitter = require('events').EventEmitter,
     Promise = require('promise/lib/es6-extensions'),
     extend = require('extend'),
     inherits = require('inherits');
+
+function sanitize(obj) {
+  return JSON.stringify(obj);
+}
 
 function Abecedary(iframeUrl, template, options) {
   var generateElement = function() {
@@ -16,17 +20,21 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options.mocha = extend({bail: true, ignoreLeaks: true }, this.options.mocha);
+  this.options.mocha = extend({bail: true}, this.options.mocha);
   this.options.systemjs = this.options.systemjs || {};
   this.element = this.options.element || generateElement()
   delete(this.options.element);
 
   this.sandbox = new Promise(function (resolve, reject) {
+    var self = this;
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
       context.on('error', error.bind(this));
       context.on('loaded', function() {
+        context.evaljs(runner.toString());
+        context.evaljs('var runner = new Runner();');
+        context.evaljs('runner.setup(' + sanitize(self.options) + ');');
         resolve(context);
       });
 
@@ -51,15 +59,14 @@ inherits(Abecedary, EventEmitter);
 // Public API to run tests against code
 // Doesn't return anything, but emit a `complete` event when finished
 Abecedary.prototype.run = function(code, tests, globals) {
-  var _this = this;
+  var self = this;
 
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(_this.options, code, tests || _this.tests || '', globals));
+      context.evaljs('runner.run(' + sanitize(code) + ', ' + sanitize(tests) + ', ' + sanitize(globals) + ');');
     } catch(e) {
-      debugger;
-      _this.emit('error', e);
+      self.emit('error', e);
     }
   });
 }

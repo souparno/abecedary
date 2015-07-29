@@ -1,10 +1,14 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Abecedary = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var runner = require('./lib/runner.js'),
+var runner = require('./lib/systemjs-runner.js'),
     stuff = require('stuff.js'),
     EventEmitter = require('events').EventEmitter,
     Promise = require('promise/lib/es6-extensions'),
     extend = require('extend'),
     inherits = require('inherits');
+
+function sanitize(obj) {
+  return JSON.stringify(obj);
+}
 
 function Abecedary(iframeUrl, template, options) {
   var generateElement = function() {
@@ -17,17 +21,21 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options.mocha = extend({bail: true, ignoreLeaks: true }, this.options.mocha);
+  this.options.mocha = extend({bail: true}, this.options.mocha);
   this.options.systemjs = this.options.systemjs || {};
   this.element = this.options.element || generateElement()
   delete(this.options.element);
 
   this.sandbox = new Promise(function (resolve, reject) {
+    var self = this;
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
       context.on('error', error.bind(this));
       context.on('loaded', function() {
+        context.evaljs(runner.toString());
+        context.evaljs('var runner = new Runner();');
+        context.evaljs('runner.setup(' + sanitize(self.options) + ');');
         resolve(context);
       });
 
@@ -52,15 +60,14 @@ inherits(Abecedary, EventEmitter);
 // Public API to run tests against code
 // Doesn't return anything, but emit a `complete` event when finished
 Abecedary.prototype.run = function(code, tests, globals) {
-  var _this = this;
+  var self = this;
 
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(_this.options, code, tests || _this.tests || '', globals));
+      context.evaljs('runner.run(' + sanitize(code) + ', ' + sanitize(tests) + ', ' + sanitize(globals) + ');');
     } catch(e) {
-      debugger;
-      _this.emit('error', e);
+      self.emit('error', e);
     }
   });
 }
@@ -73,94 +80,90 @@ Abecedary.prototype.close = function(data) {
 
 module.exports = Abecedary;
 
-},{"./lib/runner.js":2,"events":4,"extend":6,"inherits":7,"promise/lib/es6-extensions":9,"stuff.js":11}],2:[function(require,module,exports){
-// This runs the code in the stuff.js iframe
-// There is some error handling in here in case the tests themselves throw an erorr
-function generateTestWrapper(globals, tests) {
-  var argumentList = [],
-      argumentValues = [];
-  for (var property in globals) {
-    argumentList.push(property);
-    argumentValues.push('globals.' + property);
-  }
-  return [
-    'var tests,',
-    '    code = require("code"),',
-    '    globals = require("globals");',
-    '(function(' + argumentList.join(',') + ') {',
-    '  tests = function() {',
-    '    try {',
-           tests,
-    '    } catch(e) {',
-    '      rethrow(e, ' + JSON.stringify(JSON.stringify(tests)) + ', 0);',
-    '    }',
-    '  };',
-    '})(' + argumentValues.join(',') + ');',
-    'module.exports = tests;'
-  ].join('\n');
-}
-module.exports = function(options, code, tests, globals) {
-  if (!globals) {
-    globals = {};
-  }
-  return [
-    'try {',
-    '  window.define = System.amdDefine;',
-    '  window.require = window.requirejs = System.amdRequire;',
-    '',
-    '  var systemNormalize = System.normalize;',
-    '  System.normalize = function(name, parentName, parentAddress) {',
-    '    if ("tests" == name) {',
-    '      return name;',
-    '    }',
-    '    return systemNormalize.apply(this, arguments);',
-    '  };',
-    '  var systemFetch = System.fetch;',
-    '  System.fetch = function(load) {',
-    '    if ("tests" == load.name) {',
-    '      return new Promise(function(resolve, reject) {',
-    '        resolve(' + JSON.stringify(generateTestWrapper(globals, tests)) + ');',
-    '      });',
-    '    }',
-    '    return systemFetch.apply(this, arguments);',
-    '  };',
-    '',
-    '  var options = JSON.parse('+JSON.stringify(JSON.stringify(options))+');',
-    '  System.config(options.systemjs);',
-    '',
-    '  define("options", function(require, exports, module) {',
-    '    return options;',
-    '  });',
-    '',
-    '  define("code", function(require, exports, module) {',
-    '    return JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
-    '  });',
-    '',
-    '  define("globals", function(require, exports, module) {',
-    '    return JSON.parse('+JSON.stringify(JSON.stringify(globals))+');',
-    '  });',
-    '',
-    '  System.import("runner").then(function(runner) {',
-    '    runner();',
-    '    System.normalize = systemNormalize;',
-    '    System.fetch = systemFetch;',
-    '    System.normalize("runner").then(function(name) {',
-    '      System.delete(name);',
-    '    });',
-    '    System.normalize("tests").then(function(name) {',
-    '      System.delete(name);',
-    '    });',
-    '    System.normalize("code").then(function(name) {',
-    '      System.delete(name);',
-    '    });',
-    '  });',
-    '',
-    '} catch(e) {',
-    '  rethrow(e, JSON.parse('+JSON.stringify(JSON.stringify(tests))+'), 6);',
-    '}'
-  ].join('\n');
-}
+},{"./lib/systemjs-runner.js":2,"events":4,"extend":6,"inherits":7,"promise/lib/es6-extensions":9,"stuff.js":11}],2:[function(require,module,exports){
+// Need this object to be a single function since it'll be evaluated in the sandbox.
+module.exports = function Runner() {
+  var self = this;
 
+  function deleteModule(name) {
+    System.normalize(name).then(function(name) {
+      System.delete(name);
+    });
+  };
+
+  function generateTestWrapper(tests, globals) {
+    var argumentList = ['"require"', '"code"', '"globals"'],
+      argumentValues = ['require', 'code', 'globals'];
+    for (var property in globals) {
+      argumentList.push('"' + property + '"');
+      argumentValues.push('globals.' + property);
+    }
+    return function() {
+      return [
+        'var testFunction = Function(' + argumentList.join(', ') + ', ' + JSON.stringify(tests) + ');',
+        'var code = require("code"),',
+        '    globals = require("globals");',
+        'module.exports = function() {',
+        '  testFunction.apply(null, [' + argumentValues.join(',') + ']);',
+        '};'
+      ].join('\n');
+    }
+  }
+
+  this.setup = function(options) {
+    System.config(options.systemjs);
+
+    // Customizing System.normalize so it doesn't normalize tests.
+    var systemNormalize = System.normalize;
+    System.normalize = function(name, parentName, parentAddress) {
+      if ("tests" == name) {
+        return new Promise(function(resolve, reject) {
+          resolve(name);
+        });
+      }
+      return systemNormalize.apply(this, arguments);
+    };
+
+    // Customizing System.fetch so that we can inject the test code at runtime,
+    // and have System.js evaluate it for dependencies.
+    var systemFetch = System.fetch;
+    System.fetch = function(load) {
+      if ("tests" == load.name) {
+        return new Promise(function(resolve, reject) {
+          resolve(self.testWrapper());
+        });
+      }
+      return systemFetch.apply(this, arguments);
+    };
+
+    System.registerDynamic('options', [], false, function(require, exports, module) {
+      module.exports = options;
+    });
+  };
+
+  this.run = function(code, tests, globals) {
+    self.testWrapper = generateTestWrapper(tests, globals);
+
+    System.registerDynamic('code', [], false, function(require, exports, module) {
+      module.exports = code;
+    });
+
+    System.registerDynamic('globals', [], false, function(require, exports, module) {
+      module.exports = globals;
+    });
+
+    System.import('runner').then(function(runner) {
+      // Run the tests.
+      runner();
+
+      // Clean up runtime modules.
+      deleteModule('code');
+      deleteModule('globals');
+      deleteModule('tests');
+      deleteModule('runner');
+    });
+  };
+};
 },{}],3:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){

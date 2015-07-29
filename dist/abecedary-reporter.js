@@ -2,11 +2,13 @@ require('mocha-details');
 
 // Deep clone that only grabs strings and numbers
 function cleanObject(error, index, depth) {
-  if(!error || depth > 5) { return null; }
-
-  depth = depth || 0;
-
   var response = {};
+
+  if(error instanceof Error) {
+    var error = JSON.parse(JSON.stringify(error, ['message', 'name', 'stack']));
+    return generateStacktraceAndPosition(error);
+  }
+
   for(var key in error) {
     try {
       if(key[0] == "_" || key[0] == "$" || key == 'ctx' || key == 'parent') {
