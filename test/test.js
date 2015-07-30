@@ -1,7 +1,8 @@
-var assert = chai.assert;
+var assert = require('chai').assert,
+    Abecedary = require('lib/index');
 
 describe("Abecedary", function() {
-  var iframeUrl = "stuff.js/dist/secure/index.html",
+  var iframeUrl = "jspm_packages/github/codeschool/stuff.js@0.3.0/secure/index.html",
       iframeContent = [
         '<!DOCTYPE html>',
         '<html>',
@@ -10,21 +11,25 @@ describe("Abecedary", function() {
         '<base href="http://localhost:4000">',
         '</head>',
         '<body>',
-        '<script src="systemjs/dist/system.src.js"></script>',
-        '<script src="abecedary-support.js"></script>',
+        '<script src="jspm_packages/system.js"></script>',
+        '<script src="dist/abecedary-support.js"></script>',
         '</body>',
         '</html>'
       ].join('\n'),
       systemjs = {
         'defaultJSExtensions': true,
+        "paths": {
+          "github:*": "jspm_packages/github/*.js",
+          "npm:*": "jspm_packages/npm/*.js"
+        },
         'map': {
-          'abecedary-interface': 'abecedary-interface.js',
-          'abecedary-reporter': 'abecedary-reporter.js',
-          'runner': 'mocha-runner.js',
-          'mocha-details': 'mocha-details.js',
-          'mocha': 'mocha/mocha.js',
-          'extend': 'extend/index.js',
-          'chai': 'chai/chai.js'
+          'interface': 'lib/mocha/interface.js',
+          'reporter': 'lib/mocha/reporter.js',
+          'runner': 'lib/mocha/runner.js',
+          'details': 'lib/mocha/details.js',
+          'mocha': 'jspm_packages/npm/mocha@2.2.5/mocha.js',
+          "extend": "jspm_packages/npm/extend@3.0.0/index.js",
+          "chai": "jspm_packages/github/chaijs/chai@3.2.0.js"
         },
         'meta': {
           'mocha': {

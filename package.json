@@ -7,43 +7,32 @@
     "type": "git",
     "url": "https://github.com/codeschool/abecedary.git"
   },
-  "main": "index.js",
+  "main": "lib/index.js",
   "license": "AAL",
-  "browser": {
-    "stuff.js": "./node_modules/stuff.js/lib/stuff.js"
-  },
-  "browserify": {
-    "transform": [
-      "browserify-shim"
-    ]
-  },
-  "browserify-shim": {
-    "stuff.js": "stuff"
-  },
-  "dependencies": {
-    "chai": "^3.2.0",
-    "extend": "^3.0.0",
-    "inherits": "^2.0.1",
-    "promise": "^7.0.3",
-    "sinon": "^1.15.4",
-    "stuff.js": "git+https://github.com/codeschool/stuff.js#0.3.0",
-    "systemjs": "^0.18.4"
-  },
   "devDependencies": {
-    "browserify": "^10.2.6",
-    "browserify-shim": "^3.8.9",
-    "grunt": "^0.4.5",
-    "grunt-browserify": "^3.8.0",
-    "grunt-contrib-connect": "^0.10.1",
-    "grunt-contrib-watch": "^0.6.1",
-    "grunt-karma": "^0.11.2",
-    "karma": "^0.12.37",
-    "karma-chrome-launcher": "^0.2.0",
-    "karma-mocha": "^0.2.0",
-    "karma-sinon-chai": "^1.0.0",
-    "mocha": "^2.2.5"
+    "grunt-contrib-connect": "^0.11.0"
   },
-  "scripts": {
-    "test": "grunt test"
+  "jspm": {
+    "main": "lib/index",
+    "directories": {},
+    "dependencies": {
+      "events": "npm:events@^1.0.2",
+      "extend": "npm:extend@^3.0.0",
+      "inherits": "npm:inherits@^2.0.1",
+      "promise": "npm:promise@^7.0.3",
+      "stuff.js": "github:codeschool/stuff.js@^0.3.0"
+    },
+    "devDependencies": {
+      "chai": "github:chaijs/chai@^3.2.0",
+      "mocha": "npm:mocha@^2.2.5"
+    },
+    "overrides": {
+      "npm:asap@2.0.3": {
+        "main": "browser-asap.js"
+      },
+      "github:chaijs/chai@3.2.0": {
+        "main": "chai.js"
+      }
+    }
   }
 }
