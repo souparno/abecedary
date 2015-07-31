@@ -1,7 +1,7 @@
 var assert = chai.assert;
 
 describe("Abecedary", function() {
-  var iframeUrl = "stuff.js/dist/secure/index.html",
+  var iframeUrl = "node_modules/stuff.js/dist/secure/index.html",
       iframeContent = [
         '<!DOCTYPE html>',
         '<html>',
@@ -10,21 +10,17 @@ describe("Abecedary", function() {
         '<base href="http://localhost:4000">',
         '</head>',
         '<body>',
-        '<script src="systemjs/dist/system.src.js"></script>',
-        '<script src="abecedary-support.js"></script>',
+        '<script src="node_modules/systemjs/dist/system.src.js"></script>',
+        '<script src="dist/abecedary-support.js"></script>',
         '</body>',
         '</html>'
       ].join('\n'),
       systemjs = {
         'defaultJSExtensions': true,
         'map': {
-          'abecedary-interface': 'abecedary-interface.js',
-          'abecedary-reporter': 'abecedary-reporter.js',
-          'runner': 'mocha-runner.js',
-          'mocha-details': 'mocha-details.js',
-          'mocha': 'mocha/mocha.js',
-          'extend': 'extend/index.js',
-          'chai': 'chai/chai.js'
+          'runner': 'dist/mocha-runner.js',
+          'mocha': 'node_modules/mocha/mocha.js',
+          'chai': 'node_modules/chai/chai.js'
         },
         'meta': {
           'mocha': {
@@ -33,7 +29,6 @@ describe("Abecedary", function() {
           }
         }
       };
-
 
   describe('sandbox', function() {
     var sandbox;

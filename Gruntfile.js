@@ -4,18 +4,13 @@ module.exports = function(grunt) {
     connect: {
       server: {
         options: {
-          port: 4000,
-          base: [
-            'dist',
-            'node_modules',
-            'test'
-          ]
+          port: 4000
         }
       }
     },
     browserify: {
-      dist: {
-        src: ['index.js'],
+      abecedary: {
+        src: ['lib/index.js'],
         dest: 'dist/abecedary.js',
         options: {
           browserifyOptions: {
