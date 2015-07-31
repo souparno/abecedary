@@ -1,7 +1,7 @@
 var assert = chai.assert;
 
 describe("Abecedary", function() {
-  var iframeUrl = "node_modules/stuff.js/dist/secure/index.html",
+  var iframeUrl = "http://localhost:4000/node_modules/stuff.js/dist/secure/index.html",
       iframeContent = [
         '<!DOCTYPE html>',
         '<html>',
