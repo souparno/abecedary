@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/codeschool/abecedary.git"
   },
-  "main": "index.js",
+  "main": "lib/index.js",
   "license": "AAL",
   "browser": {
     "stuff.js": "./node_modules/stuff.js/lib/stuff.js"
@@ -24,7 +24,7 @@
     "extend": "^3.0.0",
     "inherits": "^2.0.1",
     "promise": "^7.0.3",
-    "stuff.js": "git+https://github.com/codeschool/stuff.js#0.3.0"
+    "stuff.js": "https://github.com/Codecademy/stuff.js/tarball/0.3.0"
   },
   "devDependencies": {
     "browserify": "^10.2.6",
@@ -40,9 +40,12 @@
     "karma-mocha": "^0.2.0",
     "karma-sinon-chai": "^1.0.0",
     "mocha": "^2.2.5",
-    "systemjs": "^0.18.4"
+    "systemjs": "^0.18.5"
   },
   "scripts": {
     "test": "grunt test"
+  },
+  "jspm": {
+    "main": "dist/abecedary"
   }
 }
