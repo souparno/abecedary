@@ -11,32 +11,17 @@ describe("Abecedary", function() {
         '</head>',
         '<body>',
         '<script src="node_modules/systemjs/dist/system.src.js"></script>',
+        '<script src="test/config.js"></script>',
         '<script src="dist/abecedary-support.js"></script>',
         '</body>',
         '</html>'
-      ].join('\n'),
-      systemjs = {
-        'defaultJSExtensions': true,
-        'map': {
-          'runner': 'dist/mocha-runner.js',
-          'mocha': 'node_modules/mocha/mocha.js',
-          'chai': 'node_modules/chai/chai.js'
-        },
-        'meta': {
-          'mocha': {
-            'format': 'global',
-            'exports': 'mocha'
-          }
-        }
-      };
+      ].join('\n');
 
   describe('sandbox', function() {
     var sandbox;
 
     before(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent, {
-        systemjs: systemjs
-      });
+      sandbox = new Abecedary(iframeUrl, iframeContent);
     });
 
     after(function() {
@@ -166,7 +151,6 @@ describe("Abecedary", function() {
 
     before(function() {
       sandbox = new Abecedary(iframeUrl, iframeContent, {
-        systemjs: systemjs,
         'mocha': {
           'bail': false
         }
@@ -234,9 +218,7 @@ describe("Abecedary", function() {
     var sandbox;
 
     before(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent, {
-        systemjs: systemjs
-      });
+      sandbox = new Abecedary(iframeUrl, iframeContent);
     });
 
     after(function() {
