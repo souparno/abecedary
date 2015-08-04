@@ -121,7 +121,7 @@ module.exports = function(tests) {
 
   // Setup mocha
   mocha.setup({ui: 'abecedary-interface', reporter: AbecedaryReporter});
-  mocha.setup(options.mocha);
+  mocha.setup(options);
 
   // Setup Tests
   try {

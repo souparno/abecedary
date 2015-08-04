@@ -151,9 +151,7 @@ describe("Abecedary", function() {
 
     before(function() {
       sandbox = new Abecedary(iframeUrl, iframeContent, {
-        'mocha': {
-          'bail': false
-        }
+        'bail': false
       });
     });
 
