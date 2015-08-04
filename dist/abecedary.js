@@ -117,24 +117,11 @@ module.exports = function Runner() {
   }
 
   this.setup = function(options) {
-    System.config(options.systemjs);
-
-    // Customizing System.normalize so it doesn't normalize tests.
-    var systemNormalize = System.normalize;
-    System.normalize = function(name, parentName, parentAddress) {
-      if ("tests" == name) {
-        return new Promise(function(resolve, reject) {
-          resolve(name);
-        });
-      }
-      return systemNormalize.apply(this, arguments);
-    };
-
     // Customizing System.fetch so that we can inject the test code at runtime,
     // and have System.js evaluate it for dependencies.
     var systemFetch = System.fetch;
     System.fetch = function(load) {
-      if ("tests" == load.name) {
+      if (System.normalizeSync('tests') == load.name) {
         return new Promise(function(resolve, reject) {
           resolve(self.testWrapper());
         });
@@ -142,7 +129,7 @@ module.exports = function Runner() {
       return systemFetch.apply(this, arguments);
     };
 
-    System.registerDynamic('options', [], false, function(require, exports, module) {
+    System.registerDynamic(System.normalizeSync('options'), [], false, function(require, exports, module) {
       module.exports = options;
     });
   };
@@ -150,11 +137,11 @@ module.exports = function Runner() {
   this.run = function(code, tests, globals) {
     self.testWrapper = generateTestWrapper(tests, globals);
 
-    System.registerDynamic('code', [], false, function(require, exports, module) {
+    System.registerDynamic(System.normalizeSync('code'), [], false, function(require, exports, module) {
       module.exports = code;
     });
 
-    System.registerDynamic('globals', [], false, function(require, exports, module) {
+    System.registerDynamic(System.normalizeSync('globals'), [], false, function(require, exports, module) {
       module.exports = globals;
     });
 
