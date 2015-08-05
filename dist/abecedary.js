@@ -91,7 +91,6 @@ module.exports = Abecedary;
 },{"./legacy-runner.js":2,"./systemjs-runner.js":3,"events":5,"extend":7,"inherits":8,"promise/lib/es6-extensions":10,"stuff.js":12}],2:[function(require,module,exports){
 module.exports = function Runner() {
   this.setup = function(options) {
-    mocha.setup({ui: AbecedaryInterface, reporter: AbecedaryReporter});
     mocha.setup(options);
   };
 
@@ -135,19 +134,20 @@ module.exports = function Runner() {
   }
 
   function generateTestWrapper(tests, globals) {
-    var argumentList = ['"require"', '"code"', '"globals"'],
+    var argumentList = ['require', 'code', 'globals'],
       argumentValues = ['require', 'code', 'globals'];
     for (var property in globals) {
-      argumentList.push('"' + property + '"');
+      argumentList.push(property);
       argumentValues.push('globals.' + property);
     }
     return function() {
       return [
-        'var testFunction = Function(' + argumentList.join(', ') + ', ' + JSON.stringify(tests) + ');',
         'var code = require("code"),',
         '    globals = require("globals");',
         'module.exports = function() {',
-        '  testFunction.apply(null, [' + argumentValues.join(',') + ']);',
+        '  (function(' + argumentList.join(', ') + ') {',
+        tests,
+        '  })(' + argumentValues.join(',') + ')',
         '};'
       ].join('\n');
     }

@@ -24,7 +24,7 @@
     "extend": "^3.0.0",
     "inherits": "^2.0.1",
     "promise": "^7.0.3",
-    "stuff.js": "https://github.com/Codecademy/stuff.js/tarball/0.3.0"
+    "stuff.js": "https://github.com/codeschool/stuff.js/tarball/0.3.0"
   },
   "devDependencies": {
     "browserify": "^10.2.6",

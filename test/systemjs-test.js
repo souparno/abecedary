@@ -223,6 +223,7 @@ describe("SystemJS Abecedary", function () {
     });
 
     after(function() {
+      sandbox.removeAllListeners();
       sandbox.close();
     });
 
