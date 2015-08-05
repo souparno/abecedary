@@ -15,8 +15,8 @@ if(!eval && execScript) {
         fixedLineNumber,
         linePosition,
         stack = error.stack.split('\n'),
-        sansParensStack = /(.*)(\d+):(\d+)$/,
-        parensStack = /(.*)(\d+):(\d+)\)$/;
+        sansParensStack = /([^\d]*)(\d+):(\d+)$/,
+        parensStack = /([^\d])(\d+):(\d+)\)$/;
 
     // Safari
     if (error.line != undefined) {
