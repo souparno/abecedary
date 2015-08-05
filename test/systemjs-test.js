@@ -1,7 +1,7 @@
 var assert = chai.assert;
 
-describe("Abecedary", function() {
-  var iframeUrl = "http://localhost:4000/node_modules/stuff.js/dist/secure/index.html",
+describe("SystemJS Abecedary", function () {
+  var iframeUrl = "http://localhost:4000/dist/iframe.html",
       iframeContent = [
         '<!DOCTYPE html>',
         '<html>',
@@ -15,13 +15,16 @@ describe("Abecedary", function() {
         '<script src="dist/abecedary-support.js"></script>',
         '</body>',
         '</html>'
-      ].join('\n');
+      ].join('\n'),
+      options = {
+        systemjs: true
+      };
 
   describe('sandbox', function() {
     var sandbox;
 
     before(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent);
+      sandbox = new Abecedary(iframeUrl, iframeContent, options);
     });
 
     after(function() {
@@ -150,12 +153,12 @@ describe("Abecedary", function() {
     var sandbox;
 
     before(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent, {
-        'bail': false
-      });
+      options.bail = false;
+      sandbox = new Abecedary(iframeUrl, iframeContent, options);
     });
 
     after(function() {
+      delete options['bail'];
       sandbox.removeAllListeners();
       sandbox.close();
     });
@@ -216,7 +219,7 @@ describe("Abecedary", function() {
     var sandbox;
 
     before(function() {
-      sandbox = new Abecedary(iframeUrl, iframeContent);
+      sandbox = new Abecedary(iframeUrl, iframeContent, options);
     });
 
     after(function() {
