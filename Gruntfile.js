@@ -51,5 +51,4 @@ module.exports = function(grunt) {
   grunt.registerTask('default', ['browserify']);
   grunt.registerTask('develop', ['connect:server', 'karma:unit:start', 'watch']);
   grunt.registerTask('test', ['default', 'connect:server', 'karma:continuous']);
-  grunt.registerTask('w', ['watch']);
 };
