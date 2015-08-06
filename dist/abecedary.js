@@ -31,19 +31,19 @@ function Abecedary(iframeUrl, template, options) {
   delete this.options.systemjs;
 
   this.sandbox = new Promise(function (resolve, reject) {
-    var self = this;
+    var _this = this;
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
       context.on('error', error.bind(this));
       context.on('loaded', function() {
-        if (self.systemjs) {
+        if (_this.systemjs) {
           context.evaljs(systemJsRunner.toString());
         } else {
           context.evaljs(legacyRunner.toString());
         }
         context.evaljs('var runner = new Runner();');
-        context.evaljs('runner.setup(' + sanitize(self.options) + ');');
+        context.evaljs('runner.setup(' + sanitize(_this.options) + ');');
         resolve(context);
       });
 
@@ -68,14 +68,14 @@ inherits(Abecedary, EventEmitter);
 // Public API to run tests against code
 // Doesn't return anything, but emit a `complete` event when finished
 Abecedary.prototype.run = function(code, tests, globals) {
-  var self = this;
+  var _this = this;
 
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
       context.evaljs('runner.run(' + sanitize(code) + ', ' + sanitize(tests) + ', ' + sanitize(globals) + ');');
     } catch(e) {
-      self.emit('error', e);
+      _this.emit('error', e);
     }
   });
 }
@@ -119,7 +119,7 @@ module.exports = function Runner() {
 },{}],3:[function(require,module,exports){
 // Need this object to be a single function since it'll be evaluated in the sandbox.
 module.exports = function Runner() {
-  var self = this;
+  var _this = this;
 
   function deleteModule(name) {
     System.normalize(name).then(function(name) {
@@ -160,7 +160,7 @@ module.exports = function Runner() {
     System.fetch = function(load) {
       if (System.normalizeSync('tests') == load.name) {
         return new Promise(function(resolve, reject) {
-          resolve(self.testWrapper());
+          resolve(_this.testWrapper());
         });
       }
       return systemFetch.apply(this, arguments);
@@ -172,7 +172,7 @@ module.exports = function Runner() {
   };
 
   this.run = function(code, tests, globals) {
-    self.testWrapper = generateTestWrapper(tests, globals);
+    _this.testWrapper = generateTestWrapper(tests, globals);
 
     System.registerDynamic(System.normalizeSync('code'), [], false, function(require, exports, module) {
       module.exports = code;
