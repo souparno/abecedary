@@ -14,7 +14,8 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       "dist/abecedary.js",
-      "test/**/*.js"
+      "test/legacy-test.js",
+      "test/systemjs-test.js"
     ],
 
 
