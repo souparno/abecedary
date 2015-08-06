@@ -14,8 +14,7 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       "dist/abecedary.js",
-      "test/legacy-test.js",
-      "test/systemjs-test.js"
+      "test/tests.js"
     ],
 
 
@@ -64,6 +63,10 @@ module.exports = function(config) {
 
     // Continuous Integration mode
     // if true, it capture browsers, run tests and exit
-    singleRun: false
+    singleRun: false,
+
+    proxies: {
+      '/': 'http://localhost:4000'
+    }
   });
 };
