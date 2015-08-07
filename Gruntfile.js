@@ -9,8 +9,8 @@ module.exports = function(grunt) {
       }
     },
     browserify: {
-      dist: {
-        src: ['index.js'],
+      abecedary: {
+        src: ['lib/index.js'],
         dest: 'dist/abecedary.js',
         options: {
           browserifyOptions: {
@@ -51,5 +51,4 @@ module.exports = function(grunt) {
   grunt.registerTask('default', ['browserify']);
   grunt.registerTask('develop', ['connect:server', 'karma:unit:start', 'watch']);
   grunt.registerTask('test', ['default', 'connect:server', 'karma:continuous']);
-  grunt.registerTask('w', ['watch']);
 };

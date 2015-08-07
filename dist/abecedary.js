@@ -1,10 +1,15 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Abecedary = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var runner = require('./lib/runner.js'),
+var systemJsRunner = require('./systemjs-runner.js'),
+    legacyRunner = require('./legacy-runner.js'),
     stuff = require('stuff.js'),
     EventEmitter = require('events').EventEmitter,
     Promise = require('promise/lib/es6-extensions'),
     extend = require('extend'),
     inherits = require('inherits');
+
+function sanitize(obj) {
+  return JSON.stringify(obj);
+}
 
 function Abecedary(iframeUrl, template, options) {
   var generateElement = function() {
@@ -17,34 +22,40 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
+  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true}, this.options);
+
   this.element = this.options.element || generateElement()
   delete(this.options.element);
 
+  this.systemjs = this.options.systemjs;
+  delete this.options.systemjs;
+
   this.sandbox = new Promise(function (resolve, reject) {
+    var _this = this;
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
-      context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
       context.on('error', error.bind(this));
+      context.on('loaded', function() {
+        if (_this.systemjs) {
+          context.evaljs(systemJsRunner.toString());
+        } else {
+          context.evaljs(legacyRunner.toString());
+        }
+        context.evaljs('var runner = new Runner();');
+        context.evaljs('runner.setup(' + sanitize(_this.options) + ');');
+        resolve(context);
+      });
 
       // Contains the initial HTML and libraries needed to run tests,
       // as well as the tests themselves, but not the code
       context.load(this.template);
-
-      this.context = context;
     }.bind(this));
   }.bind(this));
 
   //  Publicize the run is done
   var runComplete = function(report) {
     this.emit('complete', report);
-  };
-
-  // Setup Mocha upon completion
-  var loaded = function(promise, report) {
-    this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
-    promise.resolve(this.context);
   };
 
   // Emit the error
@@ -62,7 +73,7 @@ Abecedary.prototype.run = function(code, tests, globals) {
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(code, tests || _this.tests, globals));
+      context.evaljs('runner.run(' + sanitize(code) + ', ' + sanitize(tests) + ', ' + sanitize(globals) + ');');
     } catch(e) {
       _this.emit('error', e);
     }
@@ -77,123 +88,115 @@ Abecedary.prototype.close = function(data) {
 
 module.exports = Abecedary;
 
-},{"./lib/runner.js":2,"events":5,"extend":3,"inherits":7,"promise/lib/es6-extensions":9,"stuff.js":11}],2:[function(require,module,exports){
-// This runs the code in the stuff.js iframe
-// There is some error handling in here in case the tests themselves throw an erorr
+},{"./legacy-runner.js":2,"./systemjs-runner.js":3,"events":5,"extend":7,"inherits":8,"promise/lib/es6-extensions":10,"stuff.js":12}],2:[function(require,module,exports){
+module.exports = function Runner() {
+  this.setup = function(options) {
+    mocha.setup(options);
+  };
 
-module.exports = function(code, tests, globals) {
-  if (!globals) {
-    globals = {};
-  }
-  return [
-    'try {',
-    '  window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
-    '  var globals = JSON.parse('+JSON.stringify(JSON.stringify(globals))+');',
-    '  for (var property in globals) {',
-    '    window[property] = globals[property];',
-    '  }',
-    '  mocha.suite.suites.splice(0, mocha.suite.suites.length)',
-    '',
-    '// Begin Tests',
-    tests,
-    '// End Tests',
-    '',
-    '  window.mocha.run();', 
-    '} catch(e) {', 
-    '  rethrow(e, JSON.parse('+JSON.stringify(JSON.stringify(tests))+'), 6);',
-    '}',
-    true
-  ].join('\n');
+  this.run = function(code, tests, globals) {
+    // Clear suites between runs.
+    mocha.suite.suites.splice(0, mocha.suite.suites.length);
+    mocha.suite.tests.splice(0, mocha.suite.tests.length);
+
+    for (var property in globals) {
+      window[property] = globals[property];
+    }
+
+    // Setup Tests
+    try {
+      var tests = Function("require", "code", "globals", tests);
+      tests(window.require, code, globals);
+    }
+    catch (error) {
+      rethrow(error);
+    }
+
+    // Run Tests
+    mocha.run();
+  };
 }
-
 },{}],3:[function(require,module,exports){
-'use strict';
+// Need this object to be a single function since it'll be evaluated in the sandbox.
+module.exports = function Runner() {
+  var _this = this;
 
-var hasOwn = Object.prototype.hasOwnProperty;
-var toStr = Object.prototype.toString;
+  function deleteModule(name) {
+    System.normalize(name).then(function(name) {
+      System.delete(name);
+    });
+  }
 
-var isArray = function isArray(arr) {
-	if (typeof Array.isArray === 'function') {
-		return Array.isArray(arr);
-	}
+  function tearDown() {
+    deleteModule('code');
+    deleteModule('globals');
+    deleteModule('tests');
+  }
 
-	return toStr.call(arr) === '[object Array]';
+  function generateTestWrapper(tests, globals) {
+    var argumentList = ['require', 'code', 'globals'],
+      argumentValues = ['require', 'code', 'globals'];
+    for (var property in globals) {
+      argumentList.push(property);
+      argumentValues.push('globals.' + property);
+    }
+    return function() {
+      return [
+        'var code = require("code"),',
+        '    globals = require("globals");',
+        'module.exports = function() {',
+        '  (function(' + argumentList.join(', ') + ') {',
+        tests,
+        '  })(' + argumentValues.join(',') + ')',
+        '};'
+      ].join('\n');
+    }
+  }
+
+  this.setup = function(options) {
+    // Customizing System.fetch so that we can inject the test code at runtime,
+    // and have System.js evaluate it for dependencies.
+    var systemFetch = System.fetch;
+    System.fetch = function(load) {
+      if (System.normalizeSync('tests') == load.name) {
+        return new Promise(function(resolve, reject) {
+          resolve(_this.testWrapper());
+        });
+      }
+      return systemFetch.apply(this, arguments);
+    };
+
+    System.registerDynamic(System.normalizeSync('options'), [], false, function(require, exports, module) {
+      module.exports = options;
+    });
+  };
+
+  this.run = function(code, tests, globals) {
+    _this.testWrapper = generateTestWrapper(tests, globals);
+
+    System.registerDynamic(System.normalizeSync('code'), [], false, function(require, exports, module) {
+      module.exports = code;
+    });
+
+    System.registerDynamic(System.normalizeSync('globals'), [], false, function(require, exports, module) {
+      module.exports = globals;
+    });
+
+    Promise.all([
+      System.import('runner'),
+      System.import('tests')
+    ])
+    .then(function(modules) {
+      var runner = modules[0],
+          tests = modules[1];
+      runner(tests);
+      tearDown();
+    })
+    .catch(function(error) {
+      tearDown();
+    });
+  };
 };
-
-var isPlainObject = function isPlainObject(obj) {
-	if (!obj || toStr.call(obj) !== '[object Object]') {
-		return false;
-	}
-
-	var hasOwnConstructor = hasOwn.call(obj, 'constructor');
-	var hasIsPrototypeOf = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
-	// Not own constructor property must be Object
-	if (obj.constructor && !hasOwnConstructor && !hasIsPrototypeOf) {
-		return false;
-	}
-
-	// Own properties are enumerated firstly, so to speed up,
-	// if last one is own, then all properties are own.
-	var key;
-	for (key in obj) {/**/}
-
-	return typeof key === 'undefined' || hasOwn.call(obj, key);
-};
-
-module.exports = function extend() {
-	var options, name, src, copy, copyIsArray, clone,
-		target = arguments[0],
-		i = 1,
-		length = arguments.length,
-		deep = false;
-
-	// Handle a deep copy situation
-	if (typeof target === 'boolean') {
-		deep = target;
-		target = arguments[1] || {};
-		// skip the boolean and the target
-		i = 2;
-	} else if ((typeof target !== 'object' && typeof target !== 'function') || target == null) {
-		target = {};
-	}
-
-	for (; i < length; ++i) {
-		options = arguments[i];
-		// Only deal with non-null/undefined values
-		if (options != null) {
-			// Extend the base object
-			for (name in options) {
-				src = target[name];
-				copy = options[name];
-
-				// Prevent never-ending loop
-				if (target !== copy) {
-					// Recurse if we're merging plain objects or arrays
-					if (deep && copy && (isPlainObject(copy) || (copyIsArray = isArray(copy)))) {
-						if (copyIsArray) {
-							copyIsArray = false;
-							clone = src && isArray(src) ? src : [];
-						} else {
-							clone = src && isPlainObject(src) ? src : {};
-						}
-
-						// Never move original objects, clone them
-						target[name] = extend(deep, clone, copy);
-
-					// Don't bring in undefined values
-					} else if (typeof copy !== 'undefined') {
-						target[name] = copy;
-					}
-				}
-			}
-		}
-	}
-
-	// Return the modified object
-	return target;
-};
-
-
 },{}],4:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
@@ -658,6 +661,94 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],7:[function(require,module,exports){
+'use strict';
+
+var hasOwn = Object.prototype.hasOwnProperty;
+var toStr = Object.prototype.toString;
+
+var isArray = function isArray(arr) {
+	if (typeof Array.isArray === 'function') {
+		return Array.isArray(arr);
+	}
+
+	return toStr.call(arr) === '[object Array]';
+};
+
+var isPlainObject = function isPlainObject(obj) {
+	if (!obj || toStr.call(obj) !== '[object Object]') {
+		return false;
+	}
+
+	var hasOwnConstructor = hasOwn.call(obj, 'constructor');
+	var hasIsPrototypeOf = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
+	// Not own constructor property must be Object
+	if (obj.constructor && !hasOwnConstructor && !hasIsPrototypeOf) {
+		return false;
+	}
+
+	// Own properties are enumerated firstly, so to speed up,
+	// if last one is own, then all properties are own.
+	var key;
+	for (key in obj) {/**/}
+
+	return typeof key === 'undefined' || hasOwn.call(obj, key);
+};
+
+module.exports = function extend() {
+	var options, name, src, copy, copyIsArray, clone,
+		target = arguments[0],
+		i = 1,
+		length = arguments.length,
+		deep = false;
+
+	// Handle a deep copy situation
+	if (typeof target === 'boolean') {
+		deep = target;
+		target = arguments[1] || {};
+		// skip the boolean and the target
+		i = 2;
+	} else if ((typeof target !== 'object' && typeof target !== 'function') || target == null) {
+		target = {};
+	}
+
+	for (; i < length; ++i) {
+		options = arguments[i];
+		// Only deal with non-null/undefined values
+		if (options != null) {
+			// Extend the base object
+			for (name in options) {
+				src = target[name];
+				copy = options[name];
+
+				// Prevent never-ending loop
+				if (target !== copy) {
+					// Recurse if we're merging plain objects or arrays
+					if (deep && copy && (isPlainObject(copy) || (copyIsArray = isArray(copy)))) {
+						if (copyIsArray) {
+							copyIsArray = false;
+							clone = src && isArray(src) ? src : [];
+						} else {
+							clone = src && isPlainObject(src) ? src : {};
+						}
+
+						// Never move original objects, clone them
+						target[name] = extend(deep, clone, copy);
+
+					// Don't bring in undefined values
+					} else if (typeof copy !== 'undefined') {
+						target[name] = copy;
+					}
+				}
+			}
+		}
+	}
+
+	// Return the modified object
+	return target;
+};
+
+
+},{}],8:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -682,7 +773,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -743,13 +834,13 @@ function Promise(fn) {
   if (typeof fn !== 'function') {
     throw new TypeError('not a function');
   }
-  this._41 = 0;
-  this._86 = null;
-  this._17 = [];
+  this._37 = 0;
+  this._12 = null;
+  this._59 = [];
   if (fn === noop) return;
   doResolve(fn, this);
 }
-Promise._1 = noop;
+Promise._99 = noop;
 
 Promise.prototype.then = function(onFulfilled, onRejected) {
   if (this.constructor !== Promise) {
@@ -768,24 +859,24 @@ function safeThen(self, onFulfilled, onRejected) {
   });
 };
 function handle(self, deferred) {
-  while (self._41 === 3) {
-    self = self._86;
+  while (self._37 === 3) {
+    self = self._12;
   }
-  if (self._41 === 0) {
-    self._17.push(deferred);
+  if (self._37 === 0) {
+    self._59.push(deferred);
     return;
   }
   asap(function() {
-    var cb = self._41 === 1 ? deferred.onFulfilled : deferred.onRejected;
+    var cb = self._37 === 1 ? deferred.onFulfilled : deferred.onRejected;
     if (cb === null) {
-      if (self._41 === 1) {
-        resolve(deferred.promise, self._86);
+      if (self._37 === 1) {
+        resolve(deferred.promise, self._12);
       } else {
-        reject(deferred.promise, self._86);
+        reject(deferred.promise, self._12);
       }
       return;
     }
-    var ret = tryCallOne(cb, self._86);
+    var ret = tryCallOne(cb, self._12);
     if (ret === IS_ERROR) {
       reject(deferred.promise, LAST_ERROR);
     } else {
@@ -813,8 +904,8 @@ function resolve(self, newValue) {
       then === self.then &&
       newValue instanceof Promise
     ) {
-      self._41 = 3;
-      self._86 = newValue;
+      self._37 = 3;
+      self._12 = newValue;
       finale(self);
       return;
     } else if (typeof then === 'function') {
@@ -822,21 +913,21 @@ function resolve(self, newValue) {
       return;
     }
   }
-  self._41 = 1;
-  self._86 = newValue;
+  self._37 = 1;
+  self._12 = newValue;
   finale(self);
 }
 
 function reject(self, newValue) {
-  self._41 = 2;
-  self._86 = newValue;
+  self._37 = 2;
+  self._12 = newValue;
   finale(self);
 }
 function finale(self) {
-  for (var i = 0; i < self._17.length; i++) {
-    handle(self, self._17[i]);
+  for (var i = 0; i < self._59.length; i++) {
+    handle(self, self._59[i]);
   }
-  self._17 = null;
+  self._59 = null;
 }
 
 function Handler(onFulfilled, onRejected, promise){
@@ -868,13 +959,12 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":10}],9:[function(require,module,exports){
+},{"asap/raw":11}],10:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
 
 var Promise = require('./core.js');
-var asap = require('asap/raw');
 
 module.exports = Promise;
 
@@ -888,9 +978,9 @@ var ZERO = valuePromise(0);
 var EMPTYSTRING = valuePromise('');
 
 function valuePromise(value) {
-  var p = new Promise(Promise._1);
-  p._41 = 1;
-  p._86 = value;
+  var p = new Promise(Promise._99);
+  p._37 = 1;
+  p._12 = value;
   return p;
 }
 Promise.resolve = function (value) {
@@ -927,11 +1017,11 @@ Promise.all = function (arr) {
     function res(i, val) {
       if (val && (typeof val === 'object' || typeof val === 'function')) {
         if (val instanceof Promise && val.then === Promise.prototype.then) {
-          while (val._41 === 3) {
-            val = val._86;
+          while (val._37 === 3) {
+            val = val._12;
           }
-          if (val._41 === 1) return res(i, val._86);
-          if (val._41 === 2) reject(val._86);
+          if (val._37 === 1) return res(i, val._12);
+          if (val._37 === 2) reject(val._12);
           val.then(function (val) {
             res(i, val);
           }, reject);
@@ -978,7 +1068,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":8,"asap/raw":10}],10:[function(require,module,exports){
+},{"./core.js":9}],11:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -1083,7 +1173,7 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":6,"domain":4}],11:[function(require,module,exports){
+},{"_process":6,"domain":4}],12:[function(require,module,exports){
 (function (global){
 ; var __browserify_shim_require__=require;(function browserifyShim(module, exports, require, define, browserify_shim__define__module__export__) {
 // **stuff.js** provides a secure and convinient way to sandbox untrusted

@@ -2,3 +2,5 @@ components/
 node_modules/
 example/lib/*/node_modules/
 example/build/sandbox_vendor.js
+
+.idea
