@@ -90,6 +90,20 @@ module.exports = Abecedary;
 
 },{"./legacy-runner.js":2,"./systemjs-runner.js":3,"events":5,"extend":7,"inherits":8,"promise/lib/es6-extensions":10,"stuff.js":12}],2:[function(require,module,exports){
 module.exports = function Runner() {
+  function setupGlobals(code, globals) {
+    window.code = code;
+    for (var property in globals) {
+      window[property] = globals[property];
+    }
+  }
+
+  function tearDownGlobals(code, globals) {
+    delete window.code;
+    for (var property in globals) {
+      delete window[property];
+    }
+  }
+
   this.setup = function(options) {
     mocha.setup(options);
   };
@@ -99,21 +113,23 @@ module.exports = function Runner() {
     mocha.suite.suites.splice(0, mocha.suite.suites.length);
     mocha.suite.tests.splice(0, mocha.suite.tests.length);
 
-    for (var property in globals) {
-      window[property] = globals[property];
-    }
+    setupGlobals(code, globals)
 
     // Setup Tests
     try {
       var tests = Function("require", "code", "globals", tests);
       tests(window.require, code, globals);
+
+      // Run Tests
+      mocha.run(function() {
+        tearDownGlobals(code, globals);
+      });
     }
     catch (error) {
+      tearDownGlobals(code, globals);
       rethrow(error);
     }
 
-    // Run Tests
-    mocha.run();
   };
 }
 },{}],3:[function(require,module,exports){
@@ -122,35 +138,13 @@ module.exports = function Runner() {
   var _this = this;
 
   function deleteModule(name) {
-    System.normalize(name).then(function(name) {
-      System.delete(name);
-    });
+    System.delete(System.normalizeSync(name));
   }
 
   function tearDown() {
     deleteModule('code');
     deleteModule('globals');
     deleteModule('tests');
-  }
-
-  function generateTestWrapper(tests, globals) {
-    var argumentList = ['require', 'code', 'globals'],
-      argumentValues = ['require', 'code', 'globals'];
-    for (var property in globals) {
-      argumentList.push(property);
-      argumentValues.push('globals.' + property);
-    }
-    return function() {
-      return [
-        'var code = require("code"),',
-        '    globals = require("globals");',
-        'module.exports = function() {',
-        '  (function(' + argumentList.join(', ') + ') {',
-        tests,
-        '  })(' + argumentValues.join(',') + ')',
-        '};'
-      ].join('\n');
-    }
   }
 
   this.setup = function(options) {
@@ -160,7 +154,7 @@ module.exports = function Runner() {
     System.fetch = function(load) {
       if (System.normalizeSync('tests') == load.name) {
         return new Promise(function(resolve, reject) {
-          resolve(_this.testWrapper());
+          resolve(_this._tests);
         });
       }
       return systemFetch.apply(this, arguments);
@@ -172,7 +166,7 @@ module.exports = function Runner() {
   };
 
   this.run = function(code, tests, globals) {
-    _this.testWrapper = generateTestWrapper(tests, globals);
+    _this._tests = tests;
 
     System.registerDynamic(System.normalizeSync('code'), [], false, function(require, exports, module) {
       module.exports = code;
@@ -183,18 +177,16 @@ module.exports = function Runner() {
     });
 
     Promise.all([
-      System.import('runner'),
-      System.import('tests')
+      System.import('options'),
+      System.import('runner')
     ])
     .then(function(modules) {
-      var runner = modules[0],
-          tests = modules[1];
-      runner(tests);
-      tearDown();
+      var options = modules[0],
+          runner = modules[1];
+      return runner(options, code, globals)
     })
-    .catch(function(error) {
-      tearDown();
-    });
+    .then(tearDown)
+    .catch(tearDown);
   };
 };
 },{}],4:[function(require,module,exports){

@@ -1,6 +1,6 @@
 {
   "name": "abecedary",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Crossdomain JavaScript test runner for Mocha.",
   "author": "Code School (http://codeschool.com)",
   "contributors": [
@@ -31,6 +31,8 @@
     "stuff.js": "https://github.com/codeschool/stuff.js/tarball/0.3.0"
   },
   "devDependencies": {
+    "babel-core": "^5.8.22",
+    "babel-runtime": "^5.8.20",
     "browserify": "^10.2.6",
     "browserify-shim": "^3.8.9",
     "chai": "^3.2.0",
@@ -44,7 +46,7 @@
     "karma-mocha": "^0.2.0",
     "karma-sinon-chai": "^1.0.0",
     "mocha": "^2.2.5",
-    "systemjs": "^0.18.5"
+    "systemjs": "https://github.com/codeschool/systemjs/tarball/master"
   },
   "scripts": {
     "preversion": "npm test",
