@@ -2,9 +2,9 @@ if(!eval && execScript) {
   execScript("null");
 }
 
-function normalizeErrorInfo(positionRegex, stackLines, index, offset) {
+function normalizeErrorInfo(positionRegex, stackLines, index) {
   var matches = positionRegex.exec(stackLines[index]),
-      line = parseInt(matches[2], 10) - offset,
+      line = parseInt(matches[2], 10),
       ch = parseInt(matches[3], 10);
 
   // Rewrite stack lines
@@ -24,13 +24,12 @@ function normalizeErrorInfo(positionRegex, stackLines, index, offset) {
     var stack = error.stack.split('\n'),
         sansParensStack = /([^\d]*)(\d+):(\d+)$/,
         parensStack = /([^\d])(\d+):(\d+)\)$/,
-        linesOffset = 4,
         normalizedErrorInfo = {};
 
     // Safari
     if (error.line != undefined) {
       normalizedErrorInfo = {
-        line: error.line - linesOffset,
+        line: error.line,
         ch: error.column,
         stack: error.stack
       }
@@ -38,19 +37,19 @@ function normalizeErrorInfo(positionRegex, stackLines, index, offset) {
     // Firefox
     else {
       if (sansParensStack.test(stack[0])) {
-        normalizedErrorInfo = normalizeErrorInfo(sansParensStack, stack, 0, linesOffset);
+        normalizedErrorInfo = normalizeErrorInfo(sansParensStack, stack, 0);
       }
       // IE
       else if (error.description != undefined) {
-        normalizedErrorInfo = normalizeErrorInfo(parensStack, stack, 1, linesOffset);
+        normalizedErrorInfo = normalizeErrorInfo(parensStack, stack, 1);
       }
       // Chrome
       else if (sansParensStack.test(stack[1])) {
-        normalizedErrorInfo = normalizeErrorInfo(sansParensStack, stack, 1, linesOffset);
+        normalizedErrorInfo = normalizeErrorInfo(sansParensStack, stack, 1);
       }
       // Also Chrome, depending on where the error happened.
       else if (parensStack.test(stack[1])) {
-        normalizedErrorInfo = normalizeErrorInfo(parensStack, stack, 1, linesOffset);
+        normalizedErrorInfo = normalizeErrorInfo(parensStack, stack, 1);
       }
     }
 
@@ -65,9 +64,22 @@ function normalizeErrorInfo(positionRegex, stackLines, index, offset) {
     };
   };
 
-  window.rethrow =
-  window.onerror = function(error) {
-    stuffEmit("error", generateStacktraceAndPosition(error));
+  window.onerror = function(message, url, lineNumber, column, error) {
+    var name,
+        stack;
+    if (error) {
+      name = error.name;
+      stack = error.stack;
+    }
+    stuffEmit("error", {
+      name: name,
+      message: message,
+      stack: stack,
+      position: {
+        line: lineNumber,
+        ch: column
+      }
+    });
   };
 
   stuffEmit('loaded');

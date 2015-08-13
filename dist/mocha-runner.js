@@ -1,10 +1,9 @@
-var mocha = require('mocha'),
-    options = require('options');
+var mocha = require('mocha');
 
 Mocha.Details = function(title, fn) {
   var self = this;
   var resultsFn = function() {
-    self.results = fn.call();
+    self.results = fn.apply(null, arguments);
   };
   Mocha.Runnable.call(this, title, resultsFn);
   this.pending = !resultsFn;
@@ -114,23 +113,44 @@ function AbecedaryInterface(suite) {
 }
 Mocha.interfaces['abecedary-interface'] = AbecedaryInterface;
 
-module.exports = function(tests) {
-  // Clear suites between runs.
-  mocha.suite.suites.splice(0, mocha.suite.suites.length);
-  mocha.suite.tests.splice(0, mocha.suite.tests.length);
-
-  // Setup mocha
-  mocha.setup({ui: 'abecedary-interface', reporter: AbecedaryReporter});
-  mocha.setup(options);
-
-  // Setup Tests
-  try {
-    tests();
+function setupGlobals(code, globals) {
+  window.code = code;
+  for (var property in globals) {
+    window[property] = globals[property];
   }
-  catch (error) {
-    rethrow(error);
-  }
+}
 
-  // Run Tests
-  return mocha.run();
+function tearDownGlobals(code, globals) {
+  delete window.code;
+  for (var property in globals) {
+    delete window[property];
+  }
+}
+
+module.exports = function(options, code, globals) {
+  return new Promise(function(resolve, reject){
+    // Clear suites between runs.
+    mocha.suite.suites.splice(0, mocha.suite.suites.length);
+    mocha.suite.tests.splice(0, mocha.suite.tests.length);
+
+    // Setup mocha
+    mocha.setup({ui: 'abecedary-interface', reporter: AbecedaryReporter});
+    mocha.setup(options);
+
+    setupGlobals(code, globals);
+
+    // Run Tests
+    System.import('tests')
+    .then(function() {
+      mocha.run(function() {
+        tearDownGlobals(code, globals);
+        resolve();
+      });
+    })
+    .catch(function(error) {
+      tearDownGlobals(code, globals);
+      reject(error);
+    });
+  });
+
 };
