@@ -64,6 +64,17 @@ function normalizeErrorInfo(positionRegex, stackLines, index) {
     };
   };
 
+  window.systemjsError = function(error) {
+    var tokens = error.split(/\n\t?/),
+        message = tokens.shift(),
+        stack = tokens,
+        errorObject = new Error(message);
+
+    errorObject.stack = stack.join('\n\t');
+
+    stuffEmit("error", window.generateStacktraceAndPosition(errorObject))
+  };
+
   window.onerror = function(message, url, lineNumber, column, error) {
     var name,
         stack;

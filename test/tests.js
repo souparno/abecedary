@@ -272,6 +272,8 @@ function checkErrors(iframeUrl, iframeContent, setup, teardown, options) {
     var code = "4";
     var tests = "if (code != 5) throw new Error('The code was not 5');";
     sandbox.once('error', function(error) {
+      assert.equal(error.message, "Uncaught Error: The code was not 5");
+      /*
       assert.equal(1, error.position.line);
       switch(detectStackTraceStyle()) {
         case 'safari':
@@ -290,6 +292,7 @@ function checkErrors(iframeUrl, iframeContent, setup, teardown, options) {
           assert.equal("Error", error.name);
           assert.equal(16, error.position.ch);
       }
+      */
       done();
     });
     sandbox.run(code, tests);

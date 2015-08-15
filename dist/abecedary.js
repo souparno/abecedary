@@ -37,13 +37,19 @@ function Abecedary(iframeUrl, template, options) {
       context.on('finished', runComplete.bind(this));
       context.on('error', error.bind(this));
       context.on('loaded', function() {
+        var runner,
+            setupCode;
         if (_this.systemjs) {
-          context.evaljs(systemJsRunner.toString());
+          runner = systemJsRunner.toString();
         } else {
-          context.evaljs(legacyRunner.toString());
+          runner = legacyRunner.toString();
         }
-        context.evaljs('var runner = new Runner();');
-        context.evaljs('runner.setup(' + sanitize(_this.options) + ');');
+        setupCode = [
+          "var Runner = " + runner + ";",
+          "var runner = new Runner();",
+          "runner.setup(" + sanitize(_this.options) + ");"
+        ]
+        context.evaljs(setupCode.join('\n'));
         resolve(context);
       });
 
@@ -89,7 +95,7 @@ Abecedary.prototype.close = function(data) {
 module.exports = Abecedary;
 
 },{"./legacy-runner.js":2,"./systemjs-runner.js":3,"events":5,"extend":7,"inherits":8,"promise/lib/es6-extensions":10,"stuff.js":12}],2:[function(require,module,exports){
-module.exports = function Runner() {
+module.exports = function () {
   function setupGlobals(code, globals) {
     window.code = code;
     for (var property in globals) {
@@ -134,7 +140,7 @@ module.exports = function Runner() {
 }
 },{}],3:[function(require,module,exports){
 // Need this object to be a single function since it'll be evaluated in the sandbox.
-module.exports = function Runner() {
+module.exports = function() {
   var _this = this;
 
   function deleteModule(name) {
@@ -186,7 +192,10 @@ module.exports = function Runner() {
       return runner(options, code, globals)
     })
     .then(tearDown)
-    .catch(tearDown);
+    .catch(function(error){
+      tearDown();
+      systemjsError(error);
+    });
   };
 };
 },{}],4:[function(require,module,exports){
