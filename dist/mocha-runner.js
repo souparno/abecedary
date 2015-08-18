@@ -9,7 +9,10 @@ Mocha.Details = function(title, fn) {
   this.pending = !resultsFn;
   this.type = 'details';
 }
-Mocha.Details.prototype.__proto__ = Mocha.Runnable.prototype;
+var DetailsCtor = function () {};
+DetailsCtor.prototype = Mocha.Runnable.prototype;
+Mocha.Details.prototype = new DetailsCtor();
+Mocha.Details.prototype.constructor = Mocha.Details;
 
 // Deep clone that only grabs strings and numbers
 function cleanObject(error, index, depth) {
