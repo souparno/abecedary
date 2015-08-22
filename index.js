@@ -1,3 +1,5 @@
+/* global require, module */
+
 var runner = require('./lib/runner.js'),
     stuff = require('stuff.js'),
     EventEmitter = require('events').EventEmitter,
@@ -11,13 +13,13 @@ function Abecedary(iframeUrl, template, options) {
     element.style.cssText = 'display:none;';
     document.body.appendChild(element);
     return element;
-  }
+  };
 
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
   this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
-  this.element = this.options.element || generateElement()
+  this.element = this.options.element || generateElement();
   delete(this.options.element);
 
   this.sandbox = new Promise(function (resolve, reject) {
@@ -50,7 +52,7 @@ function Abecedary(iframeUrl, template, options) {
   var error = function(error) {
     this.emit('error', error, this);
   };
-}
+};
 inherits(Abecedary, EventEmitter);
 
 // Public API to run tests against code
@@ -66,12 +68,12 @@ Abecedary.prototype.run = function(code, tests, globals) {
       _this.emit('error', e);
     }
   });
-}
+};
 
 // Public
 //   Removes any iFrames that are lingering around
 Abecedary.prototype.close = function(data) {
   this.element.parentElement.removeChild(this.element);
-}
+};
 
 module.exports = Abecedary;

@@ -121,7 +121,7 @@ function AbecedaryReporter(runner) {
 function F(){};
 F.prototype =  Mocha.reporters.Base.prototype;
 AbecedaryReporter.prototype = new F;
-AbecedaryReporter.prototype.constructor = AbecedaryReporter
+AbecedaryReporter.prototype.constructor = AbecedaryReporter;
 
 // Abecedary: Custom type for details
 Mocha.Details = function(title, fn) {
@@ -268,7 +268,7 @@ function AbecedaryInterface(suite) {
 
 // Need to override this to be able to set a ui type by name
 Mocha.prototype.ui = function(name){
-  if(typeof(name) == 'function') {
+  if(typeof(name) === 'function') {
     this._ui = name(this.suite);
   } else {
     name = name || 'bdd';
