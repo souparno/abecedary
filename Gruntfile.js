@@ -9,8 +9,8 @@ module.exports = function(grunt) {
       }
     },
     browserify: {
-      dist: {
-        src: ['index.js'],
+      abecedary: {
+        src: ['lib/index.js'],
         dest: 'dist/abecedary.js',
         options: {
           browserifyOptions: {
@@ -30,11 +30,21 @@ module.exports = function(grunt) {
         browsers: ['Chrome']
       }
     },
+    uglify: {
+      abecedary: {
+        options: {
+          sourceMap: true
+        },
+        files: {
+          'dist/abecedary.min.js': ['dist/abecedary.js']
+        }
+      }
+    },
     watch: {
       //run unit tests with karma (server needs to be already running)
       karma: {
         files: ['lib/**/*.js', 'test/**/*.js'],
-        tasks: ['browserify', 'karma:unit:run']
+        tasks: ['default', 'karma:unit:run']
       },
       scripts: {
         files: ['index.js', 'lib/runner.js'],
@@ -45,11 +55,11 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-browserify');
   grunt.loadNpmTasks('grunt-contrib-connect');
+  grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-karma');
 
-  grunt.registerTask('default', ['browserify']);
+  grunt.registerTask('default', ['browserify', 'uglify']);
   grunt.registerTask('develop', ['connect:server', 'karma:unit:start', 'watch']);
   grunt.registerTask('test', ['default', 'connect:server', 'karma:continuous']);
-  grunt.registerTask('w', ['watch']);
 };

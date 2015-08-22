@@ -129,7 +129,10 @@ Mocha.Details = function(title, fn) {
   this.pending = !fn;
   this.type = 'details';
 }
-Mocha.Details.prototype.__proto__ = Mocha.Runnable.prototype;
+var DetailsCtor = function () {};
+DetailsCtor.prototype = Mocha.Runnable.prototype;
+Mocha.Details.prototype = new DetailsCtor();
+Mocha.Details.prototype.constructor = Mocha.Details;
 
 
 

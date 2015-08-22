@@ -1,12 +1,16 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Abecedary = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /* global require, module */
-
-var runner = require('./lib/runner.js'),
+var systemJsRunner = require('./systemjs-runner.js'),
+    legacyRunner = require('./legacy-runner.js'),
     stuff = require('stuff.js'),
     EventEmitter = require('events').EventEmitter,
     Promise = require('promise/lib/es6-extensions'),
     extend = require('extend'),
     inherits = require('inherits');
+
+function sanitize(obj) {
+  return JSON.stringify(obj);
+}
 
 function Abecedary(iframeUrl, template, options) {
   var generateElement = function() {
@@ -19,34 +23,47 @@ function Abecedary(iframeUrl, template, options) {
   this.options = options || {};
   this.iframeUrl = iframeUrl;
   this.template = template;
-  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true }, this.options);
-  this.element = this.options.element || generateElement();
+
+  this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true}, this.options);
+
+  this.element = this.options.element || generateElement()
   delete(this.options.element);
 
+  this.systemjs = this.options.systemjs;
+  delete this.options.systemjs;
+
   this.sandbox = new Promise(function (resolve, reject) {
+    var _this = this;
     stuff(this.iframeUrl, { el: this.element }, function (context) {
       // Whenever we run tests in the sandbox, call runComplete
       context.on('finished', runComplete.bind(this));
-      context.on('loaded', loaded.bind(this, { resolve: resolve, reject: reject }));
       context.on('error', error.bind(this));
+      context.on('loaded', function() {
+        var runner,
+            setupCode;
+        if (_this.systemjs) {
+          runner = systemJsRunner.toString();
+        } else {
+          runner = legacyRunner.toString();
+        }
+        setupCode = [
+          "var Runner = " + runner + ";",
+          "var runner = new Runner();",
+          "runner.setup(" + sanitize(_this.options) + ");"
+        ]
+        context.evaljs(setupCode.join('\n'));
+        resolve(context);
+      });
 
       // Contains the initial HTML and libraries needed to run tests,
       // as well as the tests themselves, but not the code
       context.load(this.template);
-
-      this.context = context;
     }.bind(this));
   }.bind(this));
 
   //  Publicize the run is done
   var runComplete = function(report) {
     this.emit('complete', report);
-  };
-
-  // Setup Mocha upon completion
-  var loaded = function(promise, report) {
-    this.context.evaljs('mocha.setup('+ JSON.stringify(this.options) +');');
-    promise.resolve(this.context);
   };
 
   // Emit the error
@@ -64,7 +81,7 @@ Abecedary.prototype.run = function(code, tests, globals) {
   //lineNumber || columnNumber
   this.sandbox.then(function(context) {
     try {
-      context.evaljs(runner(code, tests || _this.tests, globals));
+      context.evaljs('runner.run(' + sanitize(code) + ', ' + sanitize(tests) + ', ' + sanitize(globals) + ');');
     } catch(e) {
       _this.emit('error', e);
     }
@@ -79,36 +96,111 @@ Abecedary.prototype.close = function(data) {
 
 module.exports = Abecedary;
 
-},{"./lib/runner.js":2,"events":4,"extend":6,"inherits":7,"promise/lib/es6-extensions":9,"stuff.js":11}],2:[function(require,module,exports){
-// This runs the code in the stuff.js iframe
-// There is some error handling in here in case the tests themselves throw an erorr
-
-module.exports = function(code, tests, globals) {
-  if (!globals) {
-    globals = {};
+},{"./legacy-runner.js":2,"./systemjs-runner.js":3,"events":5,"extend":7,"inherits":8,"promise/lib/es6-extensions":10,"stuff.js":12}],2:[function(require,module,exports){
+module.exports = function () {
+  function setupGlobals(code, globals) {
+    window.code = code;
+    for (var property in globals) {
+      window[property] = globals[property];
+    }
   }
-  return [
-    'try {',
-    '  window.code = JSON.parse('+JSON.stringify(JSON.stringify(code))+');',
-    '  var globals = JSON.parse('+JSON.stringify(JSON.stringify(globals))+');',
-    '  for (var property in globals) {',
-    '    window[property] = globals[property];',
-    '  }',
-    '  mocha.suite.suites.splice(0, mocha.suite.suites.length)',
-    '',
-    '// Begin Tests',
-    tests,
-    '// End Tests',
-    '',
-    '  window.mocha.run();', 
-    '} catch(e) {', 
-    '  rethrow(e, JSON.parse('+JSON.stringify(JSON.stringify(tests))+'), 6);',
-    '}',
-    true
-  ].join('\n');
-}
 
+  function tearDownGlobals(code, globals) {
+    delete window.code;
+    for (var property in globals) {
+      delete window[property];
+    }
+  }
+
+  this.setup = function(options) {
+    mocha.setup(options);
+  };
+
+  this.run = function(code, tests, globals) {
+    // Clear suites between runs.
+    mocha.suite.suites.splice(0, mocha.suite.suites.length);
+    mocha.suite.tests.splice(0, mocha.suite.tests.length);
+
+    setupGlobals(code, globals)
+
+    // Setup Tests
+    try {
+      var tests = Function("require", "code", "globals", tests);
+      tests(window.require, code, globals);
+
+      // Run Tests
+      mocha.run(function() {
+        tearDownGlobals(code, globals);
+      });
+    }
+    catch (error) {
+      tearDownGlobals(code, globals);
+      rethrow(error);
+    }
+
+  };
+}
 },{}],3:[function(require,module,exports){
+// Need this object to be a single function since it'll be evaluated in the sandbox.
+module.exports = function() {
+  var _this = this;
+
+  function deleteModule(name) {
+    System.delete(System.normalizeSync(name));
+  }
+
+  function tearDown() {
+    deleteModule('code');
+    deleteModule('globals');
+    deleteModule('tests');
+  }
+
+  this.setup = function(options) {
+    // Customizing System.fetch so that we can inject the test code at runtime,
+    // and have System.js evaluate it for dependencies.
+    var systemFetch = System.fetch;
+    System.fetch = function(load) {
+      if (System.normalizeSync('tests') == load.name) {
+        return new Promise(function(resolve, reject) {
+          resolve(_this._tests);
+        });
+      }
+      return systemFetch.apply(this, arguments);
+    };
+
+    System.registerDynamic(System.normalizeSync('options'), [], false, function(require, exports, module) {
+      module.exports = options;
+    });
+  };
+
+  this.run = function(code, tests, globals) {
+    _this._tests = tests;
+
+    System.registerDynamic(System.normalizeSync('code'), [], false, function(require, exports, module) {
+      module.exports = code;
+    });
+
+    System.registerDynamic(System.normalizeSync('globals'), [], false, function(require, exports, module) {
+      module.exports = globals;
+    });
+
+    Promise.all([
+      System.import('options'),
+      System.import('runner')
+    ])
+    .then(function(modules) {
+      var options = modules[0],
+          runner = modules[1];
+      return runner(options, code, globals)
+    })
+    .then(tearDown)
+    .catch(function(error){
+      tearDown();
+      systemjsError(error);
+    });
+  };
+};
+},{}],4:[function(require,module,exports){
 /*global define:false require:false */
 module.exports = (function(){
 	// Import Events
@@ -176,7 +268,7 @@ module.exports = (function(){
 	};
 	return domain
 }).call(this)
-},{"events":4}],4:[function(require,module,exports){
+},{"events":5}],5:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -479,7 +571,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -571,7 +663,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 'use strict';
 
 var hasOwn = Object.prototype.hasOwnProperty;
@@ -659,7 +751,7 @@ module.exports = function extend() {
 };
 
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -684,7 +776,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 'use strict';
 
 var asap = require('asap/raw');
@@ -870,7 +962,7 @@ function doResolve(fn, promise) {
   }
 }
 
-},{"asap/raw":10}],9:[function(require,module,exports){
+},{"asap/raw":11}],10:[function(require,module,exports){
 'use strict';
 
 //This file contains the ES6 extensions to the core Promises/A+ API
@@ -979,7 +1071,7 @@ Promise.prototype['catch'] = function (onRejected) {
   return this.then(null, onRejected);
 };
 
-},{"./core.js":8}],10:[function(require,module,exports){
+},{"./core.js":9}],11:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -1084,7 +1176,7 @@ function requestFlush() {
 }
 
 }).call(this,require('_process'))
-},{"_process":5,"domain":3}],11:[function(require,module,exports){
+},{"_process":6,"domain":4}],12:[function(require,module,exports){
 (function (global){
 ; var __browserify_shim_require__=require;(function browserifyShim(module, exports, require, define, browserify_shim__define__module__export__) {
 // **stuff.js** provides a secure and convinient way to sandbox untrusted

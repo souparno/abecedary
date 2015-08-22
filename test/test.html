@@ -1,0 +1,21 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mocha Tests</title>
+  <base href="../"/>
+  <link rel="stylesheet" href="node_modules/mocha/mocha.css" />
+  <script src="dist/abecedary.min.js"></script>
+  <script src="node_modules/mocha/mocha.js"></script>
+  <script src="node_modules/chai/chai.js"></script>
+  <script> mocha.setup({ui: 'bdd', fullTrace: true});</script>
+  <script src="test/tests.js"></script>
+  <script>
+    window.onload = function() {
+        mocha.run()
+    };
+  </script>
+ </head>
+<body>
+  <div id="mocha"></div>
+</body>
+</html>
