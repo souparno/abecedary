@@ -26,7 +26,7 @@ function Abecedary(iframeUrl, template, options) {
 
   this.options = extend({ ui: "bdd", bail: true, ignoreLeaks: true}, this.options);
 
-  this.element = this.options.element || generateElement()
+  this.element = this.options.element || generateElement();
   delete(this.options.element);
 
   this.systemjs = this.options.systemjs;
@@ -50,7 +50,7 @@ function Abecedary(iframeUrl, template, options) {
           "var Runner = " + runner + ";",
           "var runner = new Runner();",
           "runner.setup(" + sanitize(_this.options) + ");"
-        ]
+        ];
         context.evaljs(setupCode.join('\n'));
         resolve(context);
       });
@@ -141,6 +141,8 @@ module.exports = function () {
   };
 }
 },{}],3:[function(require,module,exports){
+/* global System, module */
+
 // Need this object to be a single function since it'll be evaluated in the sandbox.
 module.exports = function() {
   var _this = this;
@@ -160,7 +162,7 @@ module.exports = function() {
     // and have System.js evaluate it for dependencies.
     var systemFetch = System.fetch;
     System.fetch = function(load) {
-      if (System.normalizeSync('tests') == load.name) {
+      if (System.normalizeSync('tests') === load.name) {
         return new Promise(function(resolve, reject) {
           resolve(_this._tests);
         });
@@ -191,7 +193,7 @@ module.exports = function() {
     .then(function(modules) {
       var options = modules[0],
           runner = modules[1];
-      return runner(options, code, globals)
+      return runner(options, code, globals);
     })
     .then(tearDown)
     .catch(function(error){

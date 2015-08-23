@@ -1,3 +1,26 @@
+/* global chai, beforeEach, afterEach, before, after, Function, e */
+
+// PhantomJS 1.9.8 doesn't support bind yet
+Function.prototype.bind = Function.prototype.bind ||
+  function (ctx) {
+    var fn = this,
+      args = [],
+      param_length = 0;
+
+    for(var i=0; i<arguments.length; i++) {    
+      if(i){
+        args[i-1] = arguments[i];
+      }
+    }
+    param_length = args.length;
+    return function () {
+      for(var i =0; i<arguments.length; i++){
+        args[param_length + i] = arguments[i];
+      }
+      return fn.apply(ctx, args);
+    };
+  };
+
 var assert = chai.assert,
     iframeUrl = "http://" + window.location.host + "/dist/iframe.html";
 
@@ -75,7 +98,7 @@ describe("SystemJS Abecedary", function() {
             "if (!code) throw new Error('Code fail!');"
           ].join('\n');
       sandbox.once('complete', function(data) {
-        assert(data)
+        assert(data);
         done();
       });
       sandbox.once('error', function(error) {
@@ -107,7 +130,7 @@ function runTests(iframeUrl, iframeContent, setup, teardown, options) {
       var code = "5";
       var tests = "if (code != 5) throw new Error('The code was not 5');";
       sandbox.once('complete', function(data) {
-        assert(data)
+        assert(data);
         done();
       });
       sandbox.once('error', function(error) {
@@ -167,12 +190,12 @@ function runTests(iframeUrl, iframeContent, setup, teardown, options) {
           "it('test3', function() {",
           "  throw new Error('fails');",
           "});"
-        ].join('\n')
+        ].join('\n');
       sandbox.once("complete", function(report) {
         assert(report);
-        assert(report.failures.length == 1);
-        assert(report.passes.length == 1);
-        done()
+        assert(report.failures.length === 1);
+        assert(report.passes.length === 1);
+        done();
       });
       sandbox.run(code, tests);
     });
@@ -189,8 +212,8 @@ function runTests(iframeUrl, iframeContent, setup, teardown, options) {
         ].join('\n');
       sandbox.once("complete", function(report) {
         assert(report);
-        assert(report.passes.length == 1);
-        assert(report.details.details == 'details');
+        assert(report.passes.length === 1);
+        assert(report.details.details === 'details');
         done();
       });
       sandbox.run(code, tests);
@@ -226,9 +249,9 @@ function runTests(iframeUrl, iframeContent, setup, teardown, options) {
         ].join('\n');
       sandbox.once("complete", function(report) {
         assert(report);
-        assert(report.failures.length == 2);
-        assert(report.passes.length == 1);
-        done()
+        assert(report.failures.length === 2);
+        assert(report.passes.length === 1);
+        done();
       });
       sandbox.run(code, tests);
     });
@@ -248,9 +271,9 @@ function runTests(iframeUrl, iframeContent, setup, teardown, options) {
         ].join('\n');
       sandbox.once("complete", function(report) {
         assert(report);
-        assert(report.passes.length == 1);
-        assert(report.failures.length == 1);
-        assert(report.details.details == 'details');
+        assert(report.passes.length === 1);
+        assert(report.failures.length === 1);
+        assert(report.details.details === 'details');
         done();
       });
       sandbox.run(code, tests);
@@ -308,7 +331,7 @@ function checkErrors(iframeUrl, iframeContent, setup, teardown, options) {
       ].join('\n');
     sandbox.once("complete", function(report) {
       assert(report);
-      assert(report.failures.length == 1);
+      assert(report.failures.length === 1);
       assert(report.failures[0].err);
       assert(report.failures[0].err.message);
       assert(report.failures[0].err.position);
@@ -345,7 +368,7 @@ function checkErrors(iframeUrl, iframeContent, setup, teardown, options) {
       ].join('\n');
     sandbox.once("complete", function(report) {
       assert(report);
-      assert(report.failures.length == 1);
+      assert(report.failures.length === 1);
       assert(report.failures[0].err);
       assert(report.failures[0].err.message);
       assert(report.failures[0].err.position);
@@ -380,10 +403,10 @@ function detectStackTraceStyle() {
   }
   catch (e) {
     stackArray = e.stack.split('\n');
-    if (e.line != undefined) {
+    if (e.line !== undefined) {
       style = 'safari';
     }
-    else if (e.description != undefined) {
+    else if (e.description !== undefined) {
       style = 'ie';
     }
     else if (/(.*)(\d+):(\d+)$/.test(stackArray[0])) {

@@ -1,3 +1,5 @@
+/* global Error, System, module */
+
 var mocha = require('mocha');
 
 Mocha.Details = function(title, fn) {
@@ -8,7 +10,7 @@ Mocha.Details = function(title, fn) {
   Mocha.Runnable.call(this, title, resultsFn);
   this.pending = !resultsFn;
   this.type = 'details';
-}
+};
 var DetailsCtor = function () {};
 DetailsCtor.prototype = Mocha.Runnable.prototype;
 Mocha.Details.prototype = new DetailsCtor();
@@ -25,11 +27,11 @@ function cleanObject(error, index, depth) {
 
   for(var key in error) {
     try {
-      if(key[0] == "_" || key[0] == "$" || key == 'ctx' || key == 'parent') {
+      if(key[0] === "_" || key[0] === "$" || key === 'ctx' || key === 'parent') {
         // Skip underscored variables
-      } else if(typeof(error[key]) == 'string' || typeof(error[key]) == 'number') {
+      } else if(typeof(error[key]) === 'string' || typeof(error[key]) === 'number') {
         response[key] = error[key];
-      } else if(typeof(error[key]) == 'object') {
+      } else if(typeof(error[key]) === 'object') {
         response[key] = cleanObject(error[key], index, depth + 1);
       }
     } catch(e) {
@@ -54,7 +56,7 @@ function AbecedaryReporter(runner) {
   });
 
   runner.on('pass', function(test){
-    if (test.type == 'details') {
+    if (test.type === 'details') {
       try {
         if(test.title) {
           details[test.title] = test.results;
@@ -88,7 +90,7 @@ function AbecedaryReporter(runner) {
 function F(){};
 F.prototype =  Mocha.reporters.Base.prototype;
 AbecedaryReporter.prototype = new F;
-AbecedaryReporter.prototype.constructor = AbecedaryReporter
+AbecedaryReporter.prototype.constructor = AbecedaryReporter;
 
 function AbecedaryInterface(suite) {
   var bdd = Mocha.interfaces['bdd'];
@@ -111,7 +113,7 @@ function AbecedaryInterface(suite) {
       var test = new Mocha.Details(title, fn);
       suite.addTest(test);
       return test;
-    }
+    };
   });
 }
 Mocha.interfaces['abecedary-interface'] = AbecedaryInterface;
