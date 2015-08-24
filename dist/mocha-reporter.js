@@ -1,3 +1,5 @@
+/* global execScript, eval, toString, Error */
+
 // This file should be included in the iFrame is running your mocha tests
 // Include it after Mocha
 
@@ -7,7 +9,7 @@ if(!eval && execScript) {
 
 window.onerror = function(error) {
   window.parent.stuffEmit("error", error);
-}
+};
 
 function rethrow(e, tests, offset) {
   error = e;
@@ -63,11 +65,11 @@ function cleanObject(error, index, depth) {
   var response = {};
   for(var key in error) {
     try {
-      if(key[0] == "_" || key[0] == "$" || key == 'ctx' || key == 'parent') {
+      if(key[0] === "_" || key[0] === "$" || key === 'ctx' || key === 'parent') {
         // Skip underscored variables
-      } else if(typeof(error[key]) == 'string' || typeof(error[key]) == 'number') {
+      } else if(typeof(error[key]) === 'string' || typeof(error[key]) === 'number') {
         response[key] = error[key];
-      } else if(typeof(error[key]) == 'object') {
+      } else if(typeof(error[key]) === 'object') {
         response[key] = cleanObject(error[key], index, depth + 1);
       }
     } catch(e) {
@@ -128,7 +130,7 @@ Mocha.Details = function(title, fn) {
   Mocha.Runnable.call(this, title, fn);
   this.pending = !fn;
   this.type = 'details';
-}
+};
 var DetailsCtor = function () {};
 DetailsCtor.prototype = Mocha.Runnable.prototype;
 Mocha.Details.prototype = new DetailsCtor();
@@ -330,7 +332,7 @@ Mocha.Runnable.prototype.run = function(fn){
     try {
       this.fn.call(ctx, function(err){
         if (err instanceof Error || toString.call(err) === "[object Error]") return done(err);
-        if (null != err) return done(new Error('done() invoked with non-Error: ' + err));
+        if (null !== err) return done(new Error('done() invoked with non-Error: ' + err));
         done();
       }, result);
     } catch (err) {
