@@ -39,8 +39,8 @@ function Abecedary(iframeUrl, template, options) {
       context.on('finished', runComplete.bind(this));
       context.on('error', error.bind(this));
       context.on('loaded', function() {
-        var runner,
-            setupCode;
+        var runner, setupCode;
+        
         if (_this.systemjs) {
           runner = systemJsRunner.toString();
         } else {
@@ -97,6 +97,8 @@ Abecedary.prototype.close = function(data) {
 module.exports = Abecedary;
 
 },{"./legacy-runner.js":2,"./systemjs-runner.js":3,"events":5,"extend":7,"inherits":8,"promise/lib/es6-extensions":10,"stuff.js":12}],2:[function(require,module,exports){
+/* global module */
+
 module.exports = function () {
   function setupGlobals(code, globals) {
     window.code = code;
@@ -121,7 +123,7 @@ module.exports = function () {
     mocha.suite.suites.splice(0, mocha.suite.suites.length);
     mocha.suite.tests.splice(0, mocha.suite.tests.length);
 
-    setupGlobals(code, globals)
+    setupGlobals(code, globals);
 
     // Setup Tests
     try {
@@ -139,7 +141,7 @@ module.exports = function () {
     }
 
   };
-}
+};
 },{}],3:[function(require,module,exports){
 /* global System, module */
 

@@ -31,11 +31,10 @@ describe("Legacy Abecedary", function() {
         '<head>',
         '<title>Sandbox</title>',
         '<base href="http://' + window.location.host + '">',
-        '<link rel="stylesheet" href="http://' + window.location.host + '/node_modules/mocha/mocha.css" />',
         '</head>',
         '<body>',
         '<script src="node_modules/mocha/mocha.js"></script>',
-        '<script src="dist/reporter.js"></script>',
+        '<script src="dist/mocha-reporter.js"></script>',
         '</body>',
         '</html>'
       ].join('\n');
