@@ -1,3 +1,5 @@
+/* global System */
+
 System.config({
   'defaultJSExtensions': true,
   "transpiler": "babel",
@@ -8,8 +10,8 @@ System.config({
     ]
   },
   'map': {
-    "babel": "node_modules/babel-core/browser.js",
-    "babel-runtime": "node_modules/babel-runtime/core-js.js",
+    'babel': "node_modules/babel-core/browser.js",
+    'babel-runtime': "node_modules/babel-runtime/core-js.js",
     'runner': 'dist/mocha-runner.js',
     'mocha': 'node_modules/mocha/mocha.js',
     'chai': 'node_modules/chai/chai.js'
