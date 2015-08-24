@@ -1,3 +1,5 @@
+/* global module */
+
 module.exports = function(grunt) {
 
   grunt.initConfig({
@@ -10,7 +12,7 @@ module.exports = function(grunt) {
     },
     browserify: {
       abecedary: {
-        src: ['lib/index.js'],
+        src: ['src/index.js'],
         dest: 'dist/abecedary.js',
         options: {
           browserifyOptions: {
@@ -43,11 +45,11 @@ module.exports = function(grunt) {
     watch: {
       //run unit tests with karma (server needs to be already running)
       karma: {
-        files: ['lib/**/*.js', 'test/**/*.js'],
+        files: ['src/**/*.js', 'test/**/*.js'],
         tasks: ['default', 'karma:unit:run']
       },
       scripts: {
-        files: ['index.js', 'lib/runner.js'],
+        files: ['index.js', 'src/runner.js'],
         tasks: ['default']
       }
     }
