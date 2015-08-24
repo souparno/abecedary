@@ -24,6 +24,63 @@ Function.prototype.bind = Function.prototype.bind ||
 var assert = chai.assert,
     iframeUrl = "http://" + window.location.host + "/dist/iframe.html";
 
+
+describe("Abecedary", function () {
+
+   beforeEach(function() {
+        var iframeContent = [
+        '<!DOCTYPE html>',
+        '<html>',
+        '<head>',
+        '<title>Sandbox</title>',
+        '<base href="http://' + window.location.host + '">',
+        '</head>',
+        '<body>',
+        '<script src="node_modules/mocha/mocha.js"></script>',
+        '<script src="node_modules/chai/chai.js"></script>',
+        '<script src="dist/mocha-reporter.js"></script>',
+        '</body>',
+        '</html>'
+      ].join('\n'),
+      options = {};
+
+      this.sandbox = new Abecedary(iframeUrl, iframeContent, options);
+    });
+
+    afterEach(function() {
+      this.sandbox.removeAllListeners();
+      this.sandbox.close();
+    });
+
+ it('should run the test', function (done) {
+  var code = 'function add(one, two) { return (one + two); };'; 
+  var test = [
+        "if (!chai.assert){ throw new Error('Import fail!'); }",
+        "var assert = chai.assert;",
+        "describe('add', function () {",
+        "it('should return the sum of the two numbers', function (done) {",
+        "var result = add(1, 2);",
+        "assert.equal(result, 3);",
+        "done();",
+        "});",
+        "});"
+      ].join('\n'); 
+
+   this.sandbox.once('complete', function (data) {
+     assert(data);
+     done();
+   });
+   
+   this.sandbox.once('error', function (error) {
+     done(error);
+   });
+
+   this.sandbox.run(code, test);
+ }); 
+
+
+});
+
 describe("Legacy Abecedary", function() {
   var iframeContent = [
         '<!DOCTYPE html>',
