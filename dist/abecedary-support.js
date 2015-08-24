@@ -1,3 +1,5 @@
+/* global eval, execScript */
+
 if(!eval && execScript) {
   execScript("null");
 }
@@ -8,13 +10,13 @@ function normalizeErrorInfo(positionRegex, stackLines, index) {
       ch = parseInt(matches[3], 10);
 
   // Rewrite stack lines
-  stackLines[index] = stackLines[index].replace(positionRegex, "$1" + line +":$3")
+  stackLines[index] = stackLines[index].replace(positionRegex, "$1" + line +":$3");
 
   return {
     line: line,
     ch: ch,
     stack: stackLines.join('\n')
-  }
+  };
 }
 
 (function(window, parent) {
@@ -27,12 +29,12 @@ function normalizeErrorInfo(positionRegex, stackLines, index) {
         normalizedErrorInfo = {};
 
     // Safari
-    if (error.line != undefined) {
+    if (error.line !== undefined) {
       normalizedErrorInfo = {
         line: error.line,
         ch: error.column,
         stack: error.stack
-      }
+      };
     }
     // Firefox
     else {
@@ -40,7 +42,7 @@ function normalizeErrorInfo(positionRegex, stackLines, index) {
         normalizedErrorInfo = normalizeErrorInfo(sansParensStack, stack, 0);
       }
       // IE
-      else if (error.description != undefined) {
+      else if (error.description !== undefined) {
         normalizedErrorInfo = normalizeErrorInfo(parensStack, stack, 1);
       }
       // Chrome
@@ -72,7 +74,7 @@ function normalizeErrorInfo(positionRegex, stackLines, index) {
 
     errorObject.stack = stack.join('\n\t');
 
-    stuffEmit("error", window.generateStacktraceAndPosition(errorObject))
+    stuffEmit("error", window.generateStacktraceAndPosition(errorObject));
   };
 
   window.onerror = function(message, url, lineNumber, column, error) {
@@ -94,4 +96,4 @@ function normalizeErrorInfo(positionRegex, stackLines, index) {
   };
 
   stuffEmit('loaded');
-})(window, window.parent)
+})(window, window.parent);
