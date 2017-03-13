@@ -28,6 +28,8 @@
     "extend": "^3.0.0",
     "inherits": "^2.0.1",
     "promise": "^7.0.3",
+    "sinon": "^1.17.7",
+    "sinon-chai": "^2.8.0",
     "stuff.js": "https://github.com/codeschool/stuff.js/tarball/0.3.0"
   },
   "devDependencies": {
